@@ -1,0 +1,190 @@
+name: Deploy Sub-Store
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # 构建和测试
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm run install:all
+      
+    - name: Type check
+      run: |
+        cd frontend && npm run type-check
+        cd ../workers && npm run type-check
+        
+    - name: Lint
+      run: |
+        cd frontend && npm run lint
+        cd ../workers && npm run lint
+        
+    - name: Build frontend
+      run: cd frontend && npm run build
+      
+    - name: Build workers
+      run: cd workers && npm run build
+      
+    - name: Upload frontend artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-dist
+        path: frontend/dist/
+        
+    - name: Upload workers artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: workers-dist
+        path: workers/dist/
+
+  # 部署 Cloudflare Workers
+  deploy-workers:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install workers dependencies
+      run: cd workers && npm install
+      
+    - name: Download workers artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: workers-dist
+        path: workers/dist/
+        
+    - name: Deploy to Cloudflare Workers
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: workers
+        command: deploy --env production
+
+  # 部署前端到 GitHub Pages
+  deploy-frontend:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+      
+    - name: Build frontend for production
+      run: cd frontend && npm run build
+      env:
+        VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        VITE_APP_TITLE: Sub-Store
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: frontend/dist
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  # 部署到 Cloudflare Pages (备选方案)
+  deploy-cloudflare-pages:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && false # 默认禁用，可根据需要启用
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+      
+    - name: Build frontend
+      run: cd frontend && npm run build
+      env:
+        VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        
+    - name: Deploy to Cloudflare Pages
+      uses: cloudflare/pages-action@v1
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        projectName: sub-store-frontend
+        directory: frontend/dist
+        gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  # 健康检查
+  health-check:
+    needs: [deploy-workers, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Wait for deployment
+      run: sleep 30
+      
+    - name: Health check - API
+      run: |
+        curl -f ${{ secrets.API_BASE_URL }}/health || exit 1
+        
+    - name: Health check - Frontend
+      run: |
+        curl -f ${{ secrets.FRONTEND_URL }} || exit 1
+        
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Deployment successful!"
+        echo "🌐 Frontend: https://senma231.github.io/sub-store"
+        echo "🔧 API: https://sub-store-api.senma231.workers.dev"

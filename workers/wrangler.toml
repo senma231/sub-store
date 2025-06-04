@@ -1,0 +1,34 @@
+name = "sub-store-api"
+main = "src/index.ts"
+compatibility_date = "2023-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "sub-store-api"
+route = { pattern = "api.your-domain.com/*", zone_name = "your-domain.com" }
+
+[env.staging]
+name = "sub-store-api-staging"
+
+[[kv_namespaces]]
+binding = "SUB_STORE_KV"
+id = "your_kv_namespace_id"
+preview_id = "your_preview_kv_namespace_id"
+
+[vars]
+ENVIRONMENT = "production"
+APP_NAME = "Sub-Store"
+CORS_ORIGINS = "https://senma231.github.io,https://your-domain.com"
+
+# 在生产环境中，这些应该通过 wrangler secret 命令设置
+# wrangler secret put ADMIN_TOKEN
+# wrangler secret put JWT_SECRET
+# wrangler secret put CLOUDFLARE_API_TOKEN
+
+[build]
+command = "npm run build"
+
+[build.upload]
+format = "modules"
+dir = "dist"
+main = "./index.js"

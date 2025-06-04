@@ -1,0 +1,143 @@
+{
+  "nodes": [
+    {
+      "id": "vless-example",
+      "name": "VLESS 示例节点",
+      "type": "vless",
+      "server": "example.com",
+      "port": 443,
+      "uuid": "12345678-1234-1234-1234-123456789abc",
+      "encryption": "none",
+      "flow": "xtls-rprx-vision",
+      "network": "tcp",
+      "security": "tls",
+      "sni": "example.com",
+      "alpn": ["h2", "http/1.1"],
+      "fingerprint": "chrome",
+      "enabled": true,
+      "tags": ["高速", "稳定"],
+      "remark": "这是一个 VLESS 示例节点"
+    },
+    {
+      "id": "vmess-ws-example",
+      "name": "VMess WebSocket 节点",
+      "type": "vmess",
+      "server": "ws.example.com",
+      "port": 443,
+      "uuid": "87654321-4321-4321-4321-cba987654321",
+      "alterId": 0,
+      "security": "auto",
+      "network": "ws",
+      "tls": true,
+      "sni": "ws.example.com",
+      "wsPath": "/vmess",
+      "wsHeaders": {
+        "Host": "ws.example.com"
+      },
+      "enabled": true,
+      "tags": ["WebSocket", "CDN友好"],
+      "remark": "支持 CDN 的 VMess WebSocket 节点"
+    },
+    {
+      "id": "trojan-example",
+      "name": "Trojan 节点",
+      "type": "trojan",
+      "server": "trojan.example.com",
+      "port": 443,
+      "password": "your-trojan-password",
+      "sni": "trojan.example.com",
+      "alpn": ["h2", "http/1.1"],
+      "allowInsecure": false,
+      "enabled": true,
+      "tags": ["Trojan", "伪装"],
+      "remark": "标准 Trojan 节点"
+    },
+    {
+      "id": "ss-example",
+      "name": "Shadowsocks 节点",
+      "type": "ss",
+      "server": "ss.example.com",
+      "port": 8388,
+      "method": "aes-256-gcm",
+      "password": "your-ss-password",
+      "plugin": "v2ray-plugin",
+      "pluginOpts": "mode=websocket;host=ss.example.com;path=/ss",
+      "enabled": true,
+      "tags": ["Shadowsocks", "经典"],
+      "remark": "带 v2ray-plugin 的 SS 节点"
+    },
+    {
+      "id": "hy2-example",
+      "name": "Hysteria2 节点",
+      "type": "hy2",
+      "server": "hy2.example.com",
+      "port": 443,
+      "password": "your-hy2-password",
+      "obfs": "salamander",
+      "obfsPassword": "obfs-password",
+      "sni": "hy2.example.com",
+      "alpn": ["h3"],
+      "allowInsecure": false,
+      "upMbps": 100,
+      "downMbps": 500,
+      "enabled": true,
+      "tags": ["Hysteria2", "高速", "UDP"],
+      "remark": "Hysteria2 高速节点"
+    },
+    {
+      "id": "socks5-example",
+      "name": "SOCKS5 代理",
+      "type": "socks5",
+      "server": "socks5.example.com",
+      "port": 1080,
+      "username": "user",
+      "password": "pass",
+      "tls": false,
+      "enabled": true,
+      "tags": ["SOCKS5", "简单"],
+      "remark": "标准 SOCKS5 代理"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "main-subscription",
+      "name": "主要订阅",
+      "description": "包含所有可用节点的主要订阅",
+      "nodeIds": [
+        "vless-example",
+        "vmess-ws-example", 
+        "trojan-example",
+        "ss-example",
+        "hy2-example"
+      ],
+      "filters": [
+        {
+          "type": "exclude",
+          "field": "name",
+          "operator": "contains",
+          "value": "测试"
+        }
+      ],
+      "rules": [
+        {
+          "type": "rename",
+          "pattern": "示例",
+          "replacement": "Example"
+        },
+        {
+          "type": "sort",
+          "order": "asc"
+        }
+      ],
+      "enabled": true
+    }
+  ],
+  "settings": {
+    "defaultSubscriptionInterval": 86400,
+    "maxNodesPerSubscription": 100,
+    "enableNodeHealthCheck": true,
+    "healthCheckInterval": 3600,
+    "enableAnalytics": true,
+    "analyticsRetentionDays": 30
+  }
+}
