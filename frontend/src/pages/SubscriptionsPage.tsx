@@ -16,10 +16,9 @@ import {
   Switch,
   Divider
 } from 'antd';
-import { 
-  LinkOutlined, 
-  CopyOutlined, 
-  DownloadOutlined, 
+import {
+  CopyOutlined,
+  DownloadOutlined,
   EyeOutlined,
   SettingOutlined,
   QrcodeOutlined

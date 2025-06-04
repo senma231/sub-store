@@ -1,22 +1,11 @@
-import { apiClient, PaginatedResponse, PaginationParams } from './api';
-import { ProxyNode } from '../../../shared/types';
-
-export interface NodeListParams extends PaginationParams {
-  search?: string;
-  type?: string;
-  enabled?: boolean;
-}
-
-export interface BatchOperationRequest {
-  action: 'enable' | 'disable' | 'delete';
-  nodeIds: string[];
-}
-
-export interface BatchOperationResponse {
-  action: string;
-  affectedCount: number;
-  affectedNodes: ProxyNode[];
-}
+import { apiClient } from './api';
+import type {
+  ProxyNode,
+  PaginatedResponse,
+  NodeListParams,
+  BatchOperationRequest,
+  BatchOperationResponse
+} from '@/types';
 
 export const nodeService = {
   // 获取节点列表

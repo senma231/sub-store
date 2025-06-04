@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { message } from 'antd';
-import { authService, AuthUser } from '../services/authService';
+import { authService } from '../services/authService';
+import type { AuthUser } from '@/types';
 
 interface AuthContextType {
   user: AuthUser | null;

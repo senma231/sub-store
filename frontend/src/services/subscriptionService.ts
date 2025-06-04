@@ -1,29 +1,8 @@
 import { apiClient } from './api';
-
-export interface SubscriptionFormat {
-  format: string;
-  name: string;
-  description: string;
-  extension: string;
-  contentType: string;
-  url: string;
-}
-
-export interface SubscriptionInfo {
-  format: SubscriptionFormat;
-  statistics: {
-    totalNodes: number;
-    enabledNodes: number;
-    nodeTypes: Record<string, number>;
-  };
-  lastUpdated: number;
-}
-
-export interface SubscriptionListResponse {
-  formats: SubscriptionFormat[];
-  parameters: Record<string, string>;
-  examples: Record<string, string>;
-}
+import type {
+  SubscriptionInfo,
+  SubscriptionListResponse
+} from '@/types';
 
 export const subscriptionService = {
   // 获取支持的订阅格式

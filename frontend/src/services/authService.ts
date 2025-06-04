@@ -1,31 +1,9 @@
 import { apiClient } from './api';
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: string;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  token: string;
-  user: AuthUser;
-  expiresIn: number;
-}
-
-export interface VerifyTokenResponse {
-  user: AuthUser;
-  expiresAt: string;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
+import type {
+  LoginResponse,
+  VerifyTokenResponse,
+  ChangePasswordRequest
+} from '@/types';
 
 export const authService = {
   // 登录

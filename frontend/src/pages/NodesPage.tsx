@@ -1,32 +1,30 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  Table, 
-  Button, 
-  Space, 
-  Tag, 
-  Typography, 
-  Input, 
-  Select, 
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Tag,
+  Typography,
+  Input,
+  Select,
   Popconfirm,
   message,
-  Modal,
   Tooltip
 } from 'antd';
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
-  SearchOutlined,
   ReloadOutlined,
   ExportOutlined,
   ImportOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nodeService } from '../services/nodeService';
-import { ProxyNode } from '../../../shared/types';
+import type { ProxyNode } from '@/types';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -209,7 +207,9 @@ const NodesPage: React.FC = () => {
   // 表格选择配置
   const rowSelection = {
     selectedRowKeys,
-    onChange: setSelectedRowKeys,
+    onChange: (selectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedRowKeys as string[]);
+    },
   };
 
   return (
