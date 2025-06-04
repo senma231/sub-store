@@ -13,7 +13,7 @@
     "deploy": "npm run deploy:workers && npm run deploy:frontend",
     "deploy:workers": "cd workers && npm run deploy",
     "deploy:frontend": "cd frontend && npm run build",
-    "install:all": "npm install && cd frontend && npm install && cd ../workers && npm install",
+    "install:all": "npm install && cd frontend && npm install --legacy-peer-deps && cd ../workers && npm install",
     "test": "npm run test:frontend && npm run test:workers",
     "test:frontend": "cd frontend && npm run test",
     "test:workers": "cd workers && npm run test",

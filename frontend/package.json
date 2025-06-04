@@ -21,7 +21,7 @@
     "@ant-design/icons": "^5.2.6",
     "dayjs": "^1.11.10",
     "recharts": "^2.8.0",
-    "react-json-view": "^1.21.3",
+    "@microlink/react-json-view": "^1.23.0",
     "copy-to-clipboard": "^3.3.3",
     "qrcode.react": "^3.1.0"
   },
