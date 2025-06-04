@@ -42,13 +42,13 @@ jobs:
       run: cd workers && npm run build
       
     - name: Upload frontend artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-dist
         path: frontend/dist/
-        
+
     - name: Upload workers artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: workers-dist
         path: workers/dist/
@@ -73,7 +73,7 @@ jobs:
       run: cd workers && npm install
       
     - name: Download workers artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: workers-dist
         path: workers/dist/
@@ -98,7 +98,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         workingDirectory: workers
-        command: deploy --env production
+        command: deploy
 
   # 部署前端到 GitHub Pages (已禁用，使用 Cloudflare Pages)
   deploy-frontend-github:
