@@ -1,4 +1,4 @@
-name = "sub-store-api"
+name = "substore-api"
 main = "src/index.ts"
 compatibility_date = "2023-12-18"
 compatibility_flags = ["nodejs_compat"]
