@@ -78,6 +78,21 @@ jobs:
         name: workers-dist
         path: workers/dist/
         
+    - name: Create D1 Database (if not exists)
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: workers
+        command: d1 create sub-store-db
+      continue-on-error: true # 数据库可能已存在
+
+    - name: Run D1 Migrations
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: workers
+        command: d1 execute sub-store-db --file=./schema.sql
+
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
@@ -85,11 +100,11 @@ jobs:
         workingDirectory: workers
         command: deploy --env production
 
-  # 部署前端到 GitHub Pages
-  deploy-frontend:
+  # 部署前端到 GitHub Pages (已禁用，使用 Cloudflare Pages)
+  deploy-frontend-github:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' && false # 禁用 GitHub Pages
     
     permissions:
       contents: read
@@ -131,11 +146,11 @@ jobs:
       id: deployment
       uses: actions/deploy-pages@v2
 
-  # 部署到 Cloudflare Pages (备选方案)
-  deploy-cloudflare-pages:
+  # 部署前端到 Cloudflare Pages (主要方案)
+  deploy-frontend:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && false # 默认禁用，可根据需要启用
+    if: github.ref == 'refs/heads/master'
     
     steps:
     - name: Checkout code
@@ -150,10 +165,11 @@ jobs:
     - name: Install frontend dependencies
       run: cd frontend && npm install
       
-    - name: Build frontend
+    - name: Build frontend for Cloudflare Pages
       run: cd frontend && npm run build
       env:
         VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        VITE_APP_TITLE: Sub-Store
         
     - name: Deploy to Cloudflare Pages
       uses: cloudflare/pages-action@v1
@@ -186,5 +202,6 @@ jobs:
       if: success()
       run: |
         echo "✅ Deployment successful!"
-        echo "🌐 Frontend: https://senma231.github.io/sub-store"
+        echo "🌐 Frontend: https://sub-store-frontend.pages.dev"
         echo "🔧 API: https://sub-store-api.senma231.workers.dev"
+        echo "📊 Architecture: Cloudflare Pages + Workers + D1"

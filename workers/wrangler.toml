@@ -10,10 +10,21 @@ route = { pattern = "api.your-domain.com/*", zone_name = "your-domain.com" }
 [env.staging]
 name = "sub-store-api-staging"
 
-[[kv_namespaces]]
-binding = "SUB_STORE_KV"
-id = "your_kv_namespace_id"
-preview_id = "your_preview_kv_namespace_id"
+# D1 数据库配置 (替换 KV)
+[[d1_databases]]
+binding = "DB"
+database_name = "sub-store-db"
+database_id = "your_d1_database_id"  # 部署时需要替换
+
+[env.production.d1_databases]
+binding = "DB"
+database_name = "sub-store-db-prod"
+database_id = "your_d1_database_id_prod"  # 部署时需要替换
+
+[env.staging.d1_databases]
+binding = "DB"
+database_name = "sub-store-db-staging"
+database_id = "your_d1_database_id_staging"  # 部署时需要替换
 
 [vars]
 ENVIRONMENT = "production"

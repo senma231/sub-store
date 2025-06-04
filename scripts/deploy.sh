@@ -105,26 +105,37 @@ setup_wrangler() {
     print_success "Wrangler 设置完成"
 }
 
-# 创建 KV 命名空间
-create_kv_namespace() {
-    print_info "创建 KV 命名空间..."
-    
-    # 创建生产环境 KV
-    KV_OUTPUT=$(wrangler kv:namespace create "SUB_STORE_KV" 2>&1)
-    KV_ID=$(echo "$KV_OUTPUT" | grep -o 'id = "[^"]*"' | cut -d'"' -f2)
-    
-    # 创建预览环境 KV
-    KV_PREVIEW_OUTPUT=$(wrangler kv:namespace create "SUB_STORE_KV" --preview 2>&1)
-    KV_PREVIEW_ID=$(echo "$KV_PREVIEW_OUTPUT" | grep -o 'id = "[^"]*"' | cut -d'"' -f2)
-    
-    if [ -z "$KV_ID" ] || [ -z "$KV_PREVIEW_ID" ]; then
-        print_error "KV 命名空间创建失败"
+# 创建 D1 数据库
+create_d1_database() {
+    print_info "创建 D1 数据库..."
+
+    # 创建生产环境 D1 数据库
+    D1_OUTPUT=$(wrangler d1 create sub-store-db 2>&1)
+    D1_ID=$(echo "$D1_OUTPUT" | grep -o 'database_id = "[^"]*"' | cut -d'"' -f2)
+
+    if [ -z "$D1_ID" ]; then
+        # 尝试从不同格式的输出中提取 ID
+        D1_ID=$(echo "$D1_OUTPUT" | grep -o '[a-f0-9]\{8\}-[a-f0-9]\{4\}-[a-f0-9]\{4\}-[a-f0-9]\{4\}-[a-f0-9]\{12\}' | head -1)
+    fi
+
+    if [ -z "$D1_ID" ]; then
+        print_error "D1 数据库创建失败"
+        print_error "输出: $D1_OUTPUT"
         exit 1
     fi
-    
-    print_success "KV 命名空间创建完成"
-    print_info "生产环境 ID: $KV_ID"
-    print_info "预览环境 ID: $KV_PREVIEW_ID"
+
+    print_success "D1 数据库创建完成"
+    print_info "数据库 ID: $D1_ID"
+
+    # 初始化数据库结构
+    print_info "初始化数据库结构..."
+    cd workers
+    if wrangler d1 execute sub-store-db --file=./schema.sql; then
+        print_success "数据库结构初始化完成"
+    else
+        print_warning "数据库结构初始化失败，请手动执行"
+    fi
+    cd ..
 }
 
 # 获取 Cloudflare 信息
@@ -158,16 +169,17 @@ update_config() {
 name = "sub-store-api"
 main = "src/index.ts"
 compatibility_date = "2023-12-18"
+compatibility_flags = ["nodejs_compat"]
 
-[[kv_namespaces]]
-binding = "SUB_STORE_KV"
-id = "$KV_ID"
-preview_id = "$KV_PREVIEW_ID"
+[[d1_databases]]
+binding = "DB"
+database_name = "sub-store-db"
+database_id = "$D1_ID"
 
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
-CORS_ORIGINS = "https://$GITHUB_USERNAME.github.io"
+CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://$GITHUB_USERNAME.github.io"
 EOF
     
     print_success "配置文件更新完成"
@@ -211,7 +223,7 @@ show_github_secrets() {
     echo "CLOUDFLARE_API_TOKEN: (您的 Cloudflare API Token)"
     echo "CLOUDFLARE_ACCOUNT_ID: $ACCOUNT_ID"
     echo "API_BASE_URL: https://sub-store-api.$GITHUB_USERNAME.workers.dev"
-    echo "FRONTEND_URL: https://$GITHUB_USERNAME.github.io/sub-store"
+    echo "FRONTEND_URL: https://sub-store-frontend.pages.dev"
     echo ""
     print_info "设置步骤："
     echo "1. 进入 GitHub 项目页面"
@@ -234,13 +246,19 @@ test_deployment() {
     fi
     
     print_info "API 地址: $api_url"
-    print_info "前端地址: https://$GITHUB_USERNAME.github.io/sub-store"
+    print_info "前端地址: https://sub-store-frontend.pages.dev"
+    print_info "备用前端: https://$GITHUB_USERNAME.github.io/sub-store"
 }
 
 # 主函数
 main() {
-    echo "🚀 Sub-Store 一键部署脚本"
-    echo "================================"
+    echo "🚀 Sub-Store 新架构一键部署脚本"
+    echo "===================================="
+    echo ""
+    print_info "🆕 新架构特性："
+    echo "  🌐 Cloudflare Pages (前端) - 更快的中国访问"
+    echo "  ⚡ Cloudflare Workers (API) - 全球边缘计算"
+    echo "  🗄️ Cloudflare D1 (数据库) - SQLite 关系数据库"
     echo ""
     
     # 检查是否在项目根目录
@@ -253,7 +271,7 @@ main() {
     generate_secrets
     setup_wrangler
     get_cloudflare_info
-    create_kv_namespace
+    create_d1_database
     update_config
     setup_workers_secrets
     deploy_workers

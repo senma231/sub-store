@@ -4,6 +4,12 @@ import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { secureHeaders } from 'hono/secure-headers';
 
+// 导入数据库
+import { Database } from './database';
+import { NodesRepository } from './database/nodes';
+import { AuthRepository } from './database/auth';
+import { StatsRepository } from './database/stats';
+
 import { nodesRouter } from './routes/nodes';
 import { subscriptionRouter } from './routes/subscription';
 import { authRouter } from './routes/auth';
@@ -14,7 +20,7 @@ import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
 
 export interface Env {
-  SUB_STORE_KV: KVNamespace;
+  DB: D1Database; // 替换 KV 为 D1
   ADMIN_TOKEN: string;
   JWT_SECRET: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -23,7 +29,32 @@ export interface Env {
   CORS_ORIGINS: string;
 }
 
+// 扩展 Hono 上下文类型
+declare module 'hono' {
+  interface ContextVariableMap {
+    db: Database;
+    nodesRepo: NodesRepository;
+    authRepo: AuthRepository;
+    statsRepo: StatsRepository;
+  }
+}
+
 const app = new Hono<{ Bindings: Env }>();
+
+// 数据库初始化中间件
+app.use('*', async (c, next) => {
+  const db = new Database(c.env.DB);
+  const nodesRepo = new NodesRepository(db);
+  const authRepo = new AuthRepository(db);
+  const statsRepo = new StatsRepository(db);
+
+  c.set('db', db);
+  c.set('nodesRepo', nodesRepo);
+  c.set('authRepo', authRepo);
+  c.set('statsRepo', statsRepo);
+
+  await next();
+});
 
 // 全局中间件
 app.use('*', logger());

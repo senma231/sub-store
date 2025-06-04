@@ -237,3 +237,159 @@ export interface JwtPayload {
   iat: number;
   exp: number;
 }
+
+// D1 数据库相关类型
+
+// 数据库用户表
+export interface DbUser {
+  id: string;
+  username: string;
+  password: string;
+  role: string;
+  email?: string;
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
+  enabled: boolean;
+}
+
+// 数据库节点表
+export interface DbNode {
+  id: string;
+  name: string;
+  type: ProxyType;
+  server: string;
+  port: number;
+  enabled: boolean;
+  tags?: string; // JSON 字符串
+  remark?: string;
+
+  // 认证配置
+  uuid?: string;
+  encryption?: string;
+  flow?: string;
+  alter_id?: number;
+  security?: string;
+  password?: string;
+  method?: string;
+  username?: string;
+
+  // 网络配置
+  network?: string;
+  tls?: boolean;
+  sni?: string;
+  alpn?: string; // JSON 字符串
+  fingerprint?: string;
+  allow_insecure?: boolean;
+
+  // WebSocket 配置
+  ws_path?: string;
+  ws_headers?: string; // JSON 字符串
+
+  // HTTP/2 配置
+  h2_path?: string;
+  h2_host?: string; // JSON 字符串
+
+  // gRPC 配置
+  grpc_service_name?: string;
+  grpc_mode?: string;
+
+  // 插件配置
+  plugin?: string;
+  plugin_opts?: string;
+
+  // Hysteria 配置
+  obfs?: string;
+  obfs_password?: string;
+  up_mbps?: number;
+  down_mbps?: number;
+  auth?: string;
+  auth_str?: string;
+  protocol?: string;
+
+  // 统计信息
+  total_requests: number;
+  last_used?: string;
+
+  // 时间戳
+  created_at: string;
+  updated_at: string;
+}
+
+// 数据库订阅表
+export interface DbSubscription {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+
+  // 过滤配置
+  include_types?: string; // JSON 字符串
+  exclude_types?: string; // JSON 字符串
+  include_keywords?: string; // JSON 字符串
+  exclude_keywords?: string; // JSON 字符串
+
+  // 排序和分组
+  sort_by: string;
+  sort_order: string;
+  group_enabled: boolean;
+  group_by: string;
+
+  // 重命名规则
+  rename_rules?: string; // JSON 字符串
+
+  // 统计信息
+  total_requests: number;
+  last_accessed?: string;
+
+  // 时间戳
+  created_at: string;
+  updated_at: string;
+}
+
+// 访问日志表
+export interface DbAccessLog {
+  id: number;
+  type: string;
+  endpoint: string;
+  method: string;
+  user_agent?: string;
+  ip_address?: string;
+  referer?: string;
+  subscription_format?: string;
+  node_count?: number;
+  status_code?: number;
+  response_time?: number;
+  created_at: string;
+}
+
+// 系统设置表
+export interface DbSetting {
+  key: string;
+  value: string;
+  description?: string;
+  type: string;
+  updated_at: string;
+}
+
+// 会话表
+export interface DbSession {
+  id: string;
+  user_id: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
+// 数据库操作结果
+export interface DbResult<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  meta?: {
+    changes?: number;
+    duration?: number;
+    rows_read?: number;
+    rows_written?: number;
+  };
+}
