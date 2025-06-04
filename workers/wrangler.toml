@@ -5,9 +5,11 @@ compatibility_flags = ["nodejs_compat"]
 
 # D1 数据库配置 (替换 KV)
 # 注意：database_id 将在首次创建数据库后自动填充
-[[d1_databases]]
-binding = "DB"
-database_name = "sub-store-db"
+# 暂时注释掉，等数据库创建后再配置
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "sub-store-db"
+# database_id = "placeholder"
 
 [vars]
 ENVIRONMENT = "production"
