@@ -3,43 +3,17 @@ main = "src/index.ts"
 compatibility_date = "2023-12-18"
 compatibility_flags = ["nodejs_compat"]
 
-[env.production]
-name = "sub-store-api"
-route = { pattern = "api.your-domain.com/*", zone_name = "your-domain.com" }
-
-[env.staging]
-name = "sub-store-api-staging"
-
 # D1 数据库配置 (替换 KV)
+# 注意：database_id 将在首次创建数据库后自动填充
 [[d1_databases]]
 binding = "DB"
 database_name = "sub-store-db"
-database_id = "your_d1_database_id"  # 部署时需要替换
-
-[env.production.d1_databases]
-binding = "DB"
-database_name = "sub-store-db-prod"
-database_id = "your_d1_database_id_prod"  # 部署时需要替换
-
-[env.staging.d1_databases]
-binding = "DB"
-database_name = "sub-store-db-staging"
-database_id = "your_d1_database_id_staging"  # 部署时需要替换
 
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
-CORS_ORIGINS = "https://senma231.github.io,https://your-domain.com"
+CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://senma231.github.io"
 
 # 在生产环境中，这些应该通过 wrangler secret 命令设置
 # wrangler secret put ADMIN_TOKEN
 # wrangler secret put JWT_SECRET
-# wrangler secret put CLOUDFLARE_API_TOKEN
-
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "modules"
-dir = "dist"
-main = "./index.js"

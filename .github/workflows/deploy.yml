@@ -42,9 +42,8 @@ jobs:
       
     - name: Build workers
       run: |
-        echo "Workers 构建暂时跳过，等待类型错误修复"
-        # TODO: 修复 workers 类型错误后启用
-        # cd workers && npm run build
+        cd workers && npm install
+        cd workers && npm run build
       
     - name: Upload frontend artifacts
       uses: actions/upload-artifact@v4
@@ -174,13 +173,11 @@ jobs:
         VITE_APP_TITLE: Sub-Store
         
     - name: Deploy to Cloudflare Pages
-      uses: cloudflare/pages-action@v1
+      uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        projectName: sub-store-frontend
-        directory: frontend/dist
-        gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        command: pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2023-12-18
 
   # 健康检查
   health-check:
