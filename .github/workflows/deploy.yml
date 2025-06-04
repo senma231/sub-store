@@ -203,7 +203,9 @@ jobs:
         
     - name: Health check - Frontend
       run: |
-        curl -f ${{ secrets.FRONTEND_URL }} || exit 1
+        echo "检查前端部署状态..."
+        curl -f https://sub-store-frontend.pages.dev || exit 1
+        echo "✅ 前端健康检查通过！"
         
     - name: Notify deployment success
       if: success()
