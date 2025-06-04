@@ -175,12 +175,16 @@ jobs:
         VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
         VITE_APP_TITLE: Sub-Store
         
+    - name: Install Wrangler
+      run: npm install -g wrangler
+
     - name: Deploy to Cloudflare Pages
-      uses: cloudflare/wrangler-action@v3
-      with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2023-12-18
+      run: |
+        echo "Deploying to Cloudflare Pages..."
+        wrangler pages deploy frontend/dist --project-name=sub-store-frontend
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   # 健康检查
   health-check:
