@@ -123,7 +123,7 @@ jobs:
         node-version: '18'
         
     - name: Install frontend dependencies
-      run: cd frontend && npm install
+      run: cd frontend && npm install --legacy-peer-deps
       
     - name: Build frontend for production
       run: cd frontend && npm run build
@@ -159,7 +159,7 @@ jobs:
         node-version: '18'
         
     - name: Install frontend dependencies
-      run: cd frontend && npm install
+      run: cd frontend && npm install --legacy-peer-deps
       
     - name: Build frontend for Cloudflare Pages
       run: cd frontend && npm run build
