@@ -42,8 +42,9 @@ jobs:
       
     - name: Build workers
       run: |
-        cd workers && npm install
-        cd workers && npm run build
+        cd workers
+        npm install
+        npm run build
       
     - name: Upload frontend artifacts
       uses: actions/upload-artifact@v4
