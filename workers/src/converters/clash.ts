@@ -56,10 +56,9 @@ export function toClashConfig(nodes: ProxyNode[], options: ConversionOptions = {
     rules: getDefaultRules()
   };
   
-  return stringify(config, { 
+  return stringify(config, {
     indent: 2,
-    lineWidth: -1,
-    quotingType: '"'
+    lineWidth: -1
   });
 }
 

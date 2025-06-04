@@ -319,37 +319,37 @@ function buildStreamSettings(node: VlessNode | VmessNode | TrojanNode): any {
   };
   
   // TLS 设置
-  if (node.security === 'tls' || (node as any).tls) {
+  if ((node as any).security === 'tls' || (node as any).tls) {
     streamSettings.security = 'tls';
     streamSettings.tlsSettings = {
       allowInsecure: (node as any).allowInsecure || false,
       serverName: node.sni || ''
     };
-    
+
     if (node.alpn && node.alpn.length > 0) {
       streamSettings.tlsSettings.alpn = node.alpn;
     }
-    
-    if (node.fingerprint) {
-      streamSettings.tlsSettings.fingerprint = node.fingerprint;
+
+    if ((node as any).fingerprint) {
+      streamSettings.tlsSettings.fingerprint = (node as any).fingerprint;
     }
   }
   
   // 网络特定设置
   if (node.network === 'ws') {
     streamSettings.wsSettings = {
-      path: node.wsPath || '/',
-      headers: node.wsHeaders || {}
+      path: (node as any).wsPath || '/',
+      headers: (node as any).wsHeaders || {}
     };
   } else if (node.network === 'h2') {
     streamSettings.httpSettings = {
-      path: node.h2Path || '/',
-      host: node.h2Host || []
+      path: (node as any).h2Path || '/',
+      host: (node as any).h2Host || []
     };
   } else if (node.network === 'grpc') {
     streamSettings.grpcSettings = {
-      serviceName: node.grpcServiceName || '',
-      multiMode: node.grpcMode === 'multi'
+      serviceName: (node as any).grpcServiceName || '',
+      multiMode: (node as any).grpcMode === 'multi'
     };
   }
   

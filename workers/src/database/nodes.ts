@@ -180,7 +180,7 @@ export class NodesRepository {
       }
 
       // 合并更新
-      const updatedNode = { ...existingResult.data, ...updates };
+      const updatedNode = { ...existingResult.data, ...updates } as ProxyNode;
       const dbNode = Database.proxyNodeToDbNode(updatedNode);
       
       const result = await this.db.execute(
@@ -213,7 +213,7 @@ export class NodesRepository {
         return { success: false, error: result.error };
       }
 
-      return { success: true, data: updatedNode };
+      return { success: true, data: updatedNode as ProxyNode };
     } catch (error) {
       return {
         success: false,

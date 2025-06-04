@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { verify } from 'jose';
+import { jwtVerify } from 'jose';
 import { Env } from '../index';
 
 export interface AuthContext {
@@ -10,7 +10,7 @@ export interface AuthContext {
   };
 }
 
-export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function authMiddleware(c: Context<Env>, next: Next) {
   try {
     const authHeader = c.req.header('Authorization');
     
@@ -28,7 +28,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       
       try {
         const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-        const { payload } = await verify(token, secret);
+        const { payload } = await jwtVerify(token, secret);
         
         // 将用户信息添加到上下文
         c.set('user', {
@@ -79,7 +79,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
 }
 
 export function requireRole(role: string) {
-  return async (c: Context<{ Bindings: Env }>, next: Next) => {
+  return async (c: Context<Env>, next: Next) => {
     const user = c.get('user') as AuthContext['user'];
     
     if (!user) {

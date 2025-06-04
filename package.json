@@ -33,6 +33,7 @@
   "author": "Sub-Store Team",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^22.15.29",
     "concurrently": "^8.2.2"
   },
   "workspaces": [

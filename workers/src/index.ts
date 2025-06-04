@@ -19,8 +19,8 @@ import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
 
-export interface Env {
-  DB: D1Database; // 替换 KV 为 D1
+export interface Env extends Record<string, unknown> {
+  DB: D1Database;
   ADMIN_TOKEN: string;
   JWT_SECRET: string;
   CLOUDFLARE_API_TOKEN?: string;
@@ -36,10 +36,11 @@ declare module 'hono' {
     nodesRepo: NodesRepository;
     authRepo: AuthRepository;
     statsRepo: StatsRepository;
+    user: { id: string; username: string; role: string };
   }
 }
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<Env>();
 
 // 数据库初始化中间件
 app.use('*', async (c, next) => {

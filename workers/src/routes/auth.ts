@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { sign, verify } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { Env } from '../index';
 
-export const authRouter = new Hono<{ Bindings: Env }>();
+export const authRouter = new Hono<Env>();
 
 // 登录
 authRouter.post('/login', async (c) => {
@@ -20,15 +20,16 @@ authRouter.post('/login', async (c) => {
     // 验证管理员凭据
     if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
       const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-      const payload = {
+
+      const token = await new SignJWT({
         userId: 'admin',
         username: 'admin',
         role: 'admin',
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24小时过期
-      };
-      
-      const token = await sign(payload, secret);
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(secret);
       
       return c.json({
         success: true,

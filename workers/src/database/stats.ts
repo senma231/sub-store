@@ -131,8 +131,7 @@ export class StatsRepository {
           totalRequests,
           activeNodes,
           requestsByFormat,
-          requestsByDate,
-          nodesByType
+          requestsByDate
         }
       };
     } catch (error) {
