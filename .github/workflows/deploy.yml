@@ -101,15 +101,8 @@ jobs:
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
-        # 使用 Global API Key 方式（如果 Custom Token 有问题）
-        # apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        # accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-        # Global API Key 方式
         apiKey: ${{ secrets.CLOUDFLARE_GLOBAL_API_KEY }}
         email: ${{ secrets.CLOUDFLARE_EMAIL }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
         workingDirectory: workers
         command: deploy --compatibility-date=2024-01-15
 
