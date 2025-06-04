@@ -64,24 +64,23 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Setup Git safe directory
+      run: git config --global --add safe.directory /github/workspace
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        
+        node-version: '20'  # 升级到 Node.js 20
+
     - name: Install workers dependencies
-      run: cd workers && npm install
-      
-    - name: Download workers artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: workers-dist
-        path: workers/dist/
+      run: cd workers && npm install --legacy-peer-deps
+
+    # Wrangler deploy 会自动处理 TypeScript 编译和构建
         
     # 暂时跳过 D1 数据库配置，等 Workers 部署成功后再配置
     # - name: Create D1 Database (if not exists)
