@@ -181,7 +181,10 @@ jobs:
     - name: Deploy to Cloudflare Pages
       run: |
         echo "Deploying to Cloudflare Pages..."
-        wrangler pages deploy frontend/dist --project-name=sub-store-frontend
+        echo "尝试创建或更新 Pages 项目..."
+        wrangler pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2024-01-01 || \
+        wrangler pages create sub-store-frontend && \
+        wrangler pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2024-01-01
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
