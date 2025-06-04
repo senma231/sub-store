@@ -59,11 +59,11 @@ jobs:
         name: workers-dist
         path: workers/dist/
 
-  # 部署 Cloudflare Workers (暂时禁用，等配置修复后启用)
+  # 部署 Cloudflare Workers (通过 GitHub Actions)
   deploy-workers:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && false
+    if: github.ref == 'refs/heads/master'
     
     steps:
     - name: Checkout code
@@ -151,47 +151,34 @@ jobs:
       id: deployment
       uses: actions/deploy-pages@v2
 
-  # 部署前端到 Cloudflare Pages (主要方案)
+  # 前端部署状态检查 (使用 Cloudflare Pages 自动部署)
   deploy-frontend:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        
-    - name: Install frontend dependencies
-      run: cd frontend && npm install --legacy-peer-deps
-      
-    - name: Build frontend for Cloudflare Pages
-      run: cd frontend && npm run build
-      env:
-        VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
-        VITE_APP_TITLE: Sub-Store
-        
-    - name: Install Wrangler
-      run: npm install -g wrangler
 
-    - name: Deploy to Cloudflare Pages
+    steps:
+    - name: Frontend deployment info
       run: |
-        echo "Deploying to Cloudflare Pages..."
-        echo "尝试创建或更新 Pages 项目..."
-        wrangler pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2024-01-01 || \
-        wrangler pages create sub-store-frontend && \
-        wrangler pages deploy frontend/dist --project-name=sub-store-frontend --compatibility-date=2024-01-01
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        echo "🚀 前端部署策略：Cloudflare Pages 自动部署"
+        echo "📋 部署详情："
+        echo "  • 监听分支：master"
+        echo "  • 构建命令：cd frontend && npm run build"
+        echo "  • 输出目录：frontend/dist"
+        echo "  • 部署地址：https://sub-store-frontend.pages.dev"
+        echo ""
+        echo "✅ 优势："
+        echo "  • 自动触发：每次推送自动部署"
+        echo "  • 零配置：无需 API Token 和复杂设置"
+        echo "  • 快速部署：直接从源码构建"
+        echo "  • 避免冲突：单一部署源"
+        echo ""
+        echo "🔧 如需手动管理，请访问："
+        echo "  https://dash.cloudflare.com/pages"
 
   # 健康检查
   health-check:
-    needs: [deploy-frontend]  # 暂时只检查前端
+    needs: [deploy-frontend, deploy-workers]  # 检查前端和后端
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
     
@@ -201,8 +188,8 @@ jobs:
       
     - name: Health check - API
       run: |
-        echo "API 健康检查暂时跳过，等待 Workers 部署"
-        # curl -f ${{ secrets.API_BASE_URL }}/health || exit 1
+        echo "检查 Workers API 部署状态..."
+        curl -f https://sub-store-api.senma231.workers.dev/health || echo "⚠️ API 健康检查失败，但继续执行"
         
     - name: Health check - Frontend
       run: |
