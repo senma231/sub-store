@@ -2,6 +2,7 @@ name = "sub-store-api"
 main = "src/index.ts"
 compatibility_date = "2023-12-18"
 compatibility_flags = ["nodejs_compat"]
+account_id = "2f2a769f3c61b0725aff7d5b42e47"
 
 # D1 数据库配置 (替换 KV)
 # 注意：database_id 将在首次创建数据库后自动填充

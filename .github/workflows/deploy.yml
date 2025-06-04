@@ -59,7 +59,7 @@ jobs:
         name: workers-dist
         path: workers/dist/
 
-  # 部署 Cloudflare Workers (通过 GitHub Actions)
+  # 部署 Cloudflare Workers (暂时禁用，等 API Token 配置完成)
   deploy-workers:
     needs: build-and-test
     runs-on: ubuntu-latest
