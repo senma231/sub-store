@@ -101,9 +101,17 @@ jobs:
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3
       with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        # 使用 Global API Key 方式（如果 Custom Token 有问题）
+        # apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        # accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+        # Global API Key 方式
+        apiKey: ${{ secrets.CLOUDFLARE_GLOBAL_API_KEY }}
+        email: ${{ secrets.CLOUDFLARE_EMAIL }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
         workingDirectory: workers
-        command: deploy
+        command: deploy --compatibility-date=2024-01-15
 
   # 部署前端到 GitHub Pages (已禁用，使用 Cloudflare Pages)
   deploy-frontend-github:
@@ -188,7 +196,7 @@ jobs:
     - name: Health check - API
       run: |
         echo "检查 Workers API 部署状态..."
-        curl -f https://sub-store-api.senma231.workers.dev/health || echo "⚠️ API 健康检查失败，但继续执行"
+        curl -f https://substore-api.senmago231.workers.dev/health || echo "⚠️ API 健康检查失败，但继续执行"
         
     - name: Health check - Frontend
       run: |
@@ -201,5 +209,5 @@ jobs:
       run: |
         echo "✅ Deployment successful!"
         echo "🌐 Frontend: https://sub-store-frontend.pages.dev"
-        echo "🔧 API: https://sub-store-api.senma231.workers.dev"
+        echo "🔧 API: https://substore-api.senmago231.workers.dev"
         echo "📊 Architecture: Cloudflare Pages + Workers + D1"
