@@ -1,8 +1,10 @@
 name = "substore-api"
 main = "src/index.ts"
-compatibility_date = "2023-12-18"
+compatibility_date = "2024-01-15"
 compatibility_flags = ["nodejs_compat"]
-account_id = "2f2a769f3c61b0725aff7d5b42e47"
+
+# 使用环境变量而不是硬编码 account_id
+# account_id 将从 CLOUDFLARE_ACCOUNT_ID 环境变量读取
 
 # Workers 路由配置
 # 实际部署地址：https://substore-api.senmago231.workers.dev
