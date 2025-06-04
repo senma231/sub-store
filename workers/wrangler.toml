@@ -4,6 +4,9 @@ compatibility_date = "2023-12-18"
 compatibility_flags = ["nodejs_compat"]
 account_id = "2f2a769f3c61b0725aff7d5b42e47"
 
+# Workers 路由配置
+# 实际部署地址：https://substore-api.senmago231.workers.dev
+
 # D1 数据库配置 (替换 KV)
 # 注意：database_id 将在首次创建数据库后自动填充
 # 暂时注释掉，等数据库创建后再配置
