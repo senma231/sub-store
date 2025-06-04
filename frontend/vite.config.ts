@@ -47,7 +47,7 @@ export default defineConfig({
       }
     })
   ],
-  base: process.env.NODE_ENV === 'production' ? '/sub-store/' : '/',
+  base: '/', // Cloudflare Pages 使用根路径
   build: {
     outDir: 'dist',
     sourcemap: false,
