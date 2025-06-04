@@ -158,7 +158,7 @@ npm run deploy
 # 或者通过 GitHub Actions 自动部署
 git add .
 git commit -m "Deploy to production"
-git push origin main
+git push origin master
 ```
 
 ## 🔐 安全部署详解

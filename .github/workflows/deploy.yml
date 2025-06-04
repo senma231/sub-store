@@ -2,9 +2,9 @@ name: Deploy Sub-Store
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
   deploy-workers:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     
     steps:
     - name: Checkout code
@@ -89,7 +89,7 @@ jobs:
   deploy-frontend:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     
     permissions:
       contents: read
@@ -135,7 +135,7 @@ jobs:
   deploy-cloudflare-pages:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && false # 默认禁用，可根据需要启用
+    if: github.ref == 'refs/heads/master' && false # 默认禁用，可根据需要启用
     
     steps:
     - name: Checkout code
@@ -168,7 +168,7 @@ jobs:
   health-check:
     needs: [deploy-workers, deploy-frontend]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     
     steps:
     - name: Wait for deployment
