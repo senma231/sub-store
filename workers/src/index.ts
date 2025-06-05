@@ -15,6 +15,7 @@ import { subscriptionRouter } from './routes/subscription';
 import { authRouter } from './routes/auth';
 import { statsRouter } from './routes/stats';
 import { healthRouter } from './routes/health';
+import { customSubscriptionsRouter } from './routes/customSubscriptions';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -122,6 +123,7 @@ app.route('/auth', authRouter);
 app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
+app.route('/api/subscriptions', customSubscriptionsRouter);
 
 // 根路径
 app.get('/', (c) => {

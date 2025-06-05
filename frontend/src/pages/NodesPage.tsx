@@ -25,7 +25,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nodeService } from '../services/nodeService';
 import { NodeModal } from '../components/NodeModal';
-import type { ProxyNode } from '@/types';
+import { CustomSubscriptionModal } from '../components/CustomSubscriptionModal';
+import type { ProxyNode, CreateCustomSubscriptionRequest, CreateCustomSubscriptionResponse } from '@/types';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -38,6 +39,7 @@ const NodesPage: React.FC = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNode, setEditingNode] = useState<ProxyNode | null>(null);
+  const [customSubModalVisible, setCustomSubModalVisible] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -238,6 +240,43 @@ const NodesPage: React.FC = () => {
     setEditingNode(null);
   };
 
+  // 创建自定义订阅
+  const createCustomSubscriptionMutation = useMutation({
+    mutationFn: async (data: CreateCustomSubscriptionRequest): Promise<CreateCustomSubscriptionResponse> => {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
+      const response = await fetch(`${apiBaseUrl}/api/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create custom subscription');
+      }
+
+      const result = await response.json();
+      return result.data;
+    },
+    onSuccess: () => {
+      message.success('自定义订阅创建成功');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '创建自定义订阅失败');
+    },
+  });
+
+  // 处理生成自定义订阅
+  const handleCreateCustomSubscription = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要包含的节点');
+      return;
+    }
+    setCustomSubModalVisible(true);
+  };
+
   // 处理状态切换
   const handleToggleStatus = (node: ProxyNode) => {
     batchMutation.mutate({
@@ -380,6 +419,13 @@ const NodesPage: React.FC = () => {
               </Popconfirm>
               <Button
                 size="small"
+                type="primary"
+                onClick={() => handleCreateCustomSubscription()}
+              >
+                生成自定义订阅
+              </Button>
+              <Button
+                size="small"
                 onClick={() => setSelectedRowKeys([])}
               >
                 取消选择
@@ -418,6 +464,15 @@ const NodesPage: React.FC = () => {
         initialValues={editingNode || undefined}
         loading={createMutation.isPending || updateMutation.isPending}
         title={editingNode ? '编辑节点' : '添加节点'}
+      />
+
+      {/* 自定义订阅模态框 */}
+      <CustomSubscriptionModal
+        open={customSubModalVisible}
+        onCancel={() => setCustomSubModalVisible(false)}
+        selectedNodes={nodesData?.items?.filter(node => selectedRowKeys.includes(node.id)) || []}
+        onCreateSubscription={createCustomSubscriptionMutation.mutateAsync}
+        loading={createCustomSubscriptionMutation.isPending}
       />
     </div>
   );

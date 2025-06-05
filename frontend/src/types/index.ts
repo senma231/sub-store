@@ -125,3 +125,29 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
+// 自定义订阅相关类型
+export interface CustomSubscription {
+  id: string;
+  uuid: string;
+  name: string;
+  nodeIds: string[];
+  format: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  accessCount: number;
+  lastAccessAt?: string;
+}
+
+export interface CreateCustomSubscriptionRequest {
+  name: string;
+  nodeIds: string[];
+  format: string;
+  expiresAt?: string;
+}
+
+export interface CreateCustomSubscriptionResponse {
+  subscription: CustomSubscription;
+  url: string;
+}

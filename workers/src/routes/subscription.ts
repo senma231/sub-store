@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env } from '../index';
+import { generateCustomSubscriptionContent } from './customSubscriptions';
 
 // 简化的节点类型
 interface SimpleNode {
@@ -196,4 +197,67 @@ subscriptionRouter.get('/', async (c) => {
       },
     },
   });
+});
+
+// 自定义订阅内容获取（需要与customSubscriptions.ts中的存储保持一致）
+const customSubscriptions = new Map<string, {
+  id: string;
+  uuid: string;
+  name: string;
+  nodeIds: string[];
+  format: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  accessCount: number;
+  lastAccessAt?: string;
+}>();
+
+// 获取自定义订阅内容
+subscriptionRouter.get('/custom/:uuid', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+    const subscription = customSubscriptions.get(uuid);
+
+    if (!subscription) {
+      return c.text('Custom subscription not found', 404);
+    }
+
+    // 检查是否过期
+    if (subscription.expiresAt && new Date(subscription.expiresAt) < new Date()) {
+      return c.text('Subscription expired', 410);
+    }
+
+    // 获取关联的节点
+    const selectedNodes = demoNodes.filter(node =>
+      subscription.nodeIds.includes(node.id) && node.enabled
+    );
+
+    if (selectedNodes.length === 0) {
+      return c.text('No valid nodes found', 404);
+    }
+
+    // 更新访问统计
+    subscription.accessCount++;
+    subscription.lastAccessAt = new Date().toISOString();
+    customSubscriptions.set(uuid, subscription);
+
+    // 生成订阅内容
+    const { content, contentType, filename } = generateCustomSubscriptionContent(
+      selectedNodes,
+      subscription.format
+    );
+
+    return c.text(content, 200, {
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Subscription-Userinfo': `upload=0; download=0; total=${selectedNodes.length}; expire=${subscription.expiresAt ? Math.floor(new Date(subscription.expiresAt).getTime() / 1000) : 0}`,
+      'Profile-Title': subscription.name,
+      'Profile-Update-Interval': '24',
+    });
+
+  } catch (error) {
+    console.error('Custom subscription error:', error);
+    return c.text('Internal server error', 500);
+  }
 });
