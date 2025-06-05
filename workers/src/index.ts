@@ -65,7 +65,7 @@ app.use('*', prettyJSON());
 // CORS 配置
 app.use('*', async (c, next) => {
   // 获取配置的 CORS 源
-  const corsOrigins = c.env.CORS_ORIGINS?.split(',') || [];
+  const corsOrigins = c.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()) || [];
 
   // 默认允许的源
   const defaultOrigins = [
@@ -79,21 +79,22 @@ app.use('*', async (c, next) => {
 
   return cors({
     origin: (origin) => {
-      // 如果没有 origin（同源请求），允许
-      if (!origin) return true;
+      // 如果没有 origin（同源请求），返回 '*'
+      if (!origin) return '*';
 
       // 检查是否在允许列表中
-      if (allowedOrigins.includes(origin)) return true;
+      if (allowedOrigins.includes(origin)) return origin;
 
       // 如果配置了通配符，允许所有
-      if (corsOrigins.includes('*')) return true;
+      if (corsOrigins.includes('*')) return '*';
 
       // 检查是否是 Cloudflare Pages 域名
-      if (origin.includes('.pages.dev')) return true;
+      if (origin.includes('.pages.dev')) return origin;
 
       // 检查是否是 Workers 域名
-      if (origin.includes('.workers.dev')) return true;
+      if (origin.includes('.workers.dev')) return origin;
 
+      // 默认拒绝
       return false;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
