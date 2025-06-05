@@ -33,6 +33,6 @@
       "@/store/*": ["src/store/*"]
     }
   },
-  "include": ["src", "../shared"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
