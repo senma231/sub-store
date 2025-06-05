@@ -64,11 +64,40 @@ app.use('*', prettyJSON());
 
 // CORS 配置
 app.use('*', async (c, next) => {
-  const corsOrigins = c.env.CORS_ORIGINS?.split(',') || ['*'];
+  // 获取配置的 CORS 源
+  const corsOrigins = c.env.CORS_ORIGINS?.split(',') || [];
+
+  // 默认允许的源
+  const defaultOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://localhost:3000',
+  ];
+
+  // 合并所有允许的源
+  const allowedOrigins = [...defaultOrigins, ...corsOrigins];
+
   return cors({
-    origin: corsOrigins,
+    origin: (origin) => {
+      // 如果没有 origin（同源请求），允许
+      if (!origin) return true;
+
+      // 检查是否在允许列表中
+      if (allowedOrigins.includes(origin)) return true;
+
+      // 如果配置了通配符，允许所有
+      if (corsOrigins.includes('*')) return true;
+
+      // 检查是否是 Cloudflare Pages 域名
+      if (origin.includes('.pages.dev')) return true;
+
+      // 检查是否是 Workers 域名
+      if (origin.includes('.workers.dev')) return true;
+
+      return false;
+    },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
   })(c, next);
 });

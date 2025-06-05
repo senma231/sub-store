@@ -69,7 +69,17 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
+      '/auth': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false
+      },
       '/sub': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false
+      },
+      '/health': {
         target: 'http://localhost:8787',
         changeOrigin: true,
         secure: false
