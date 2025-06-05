@@ -24,6 +24,11 @@ ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
 CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://senma231.github.io"
 
-# 在生产环境中，这些应该通过 wrangler secret 命令设置
-# wrangler secret put ADMIN_TOKEN
-# wrangler secret put JWT_SECRET
+# 在生产环境中，这些应该通过 Cloudflare Dashboard 或 wrangler secret 命令设置
+# 方法1: Cloudflare Dashboard -> Workers & Pages -> substore-api -> Settings -> Variables
+# 方法2: wrangler secret put ADMIN_TOKEN
+# 方法3: wrangler secret put JWT_SECRET
+
+# 管理员认证配置说明：
+# ADMIN_TOKEN: 管理员登录密码，用户名固定为 "admin"
+# JWT_SECRET: JWT 令牌签名密钥，用于会话管理（可选，系统会自动生成）
