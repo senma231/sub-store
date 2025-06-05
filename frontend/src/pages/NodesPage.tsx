@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nodeService } from '../services/nodeService';
+import { NodeModal } from '../components/NodeModal';
 import type { ProxyNode } from '@/types';
 
 const { Title } = Typography;
@@ -35,6 +36,8 @@ const NodesPage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingNode, setEditingNode] = useState<ProxyNode | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -54,6 +57,35 @@ const NodesPage: React.FC = () => {
       type: selectedType || undefined,
       enabled: selectedStatus ? selectedStatus === 'enabled' : undefined,
     }),
+  });
+
+  // 创建节点
+  const createMutation = useMutation({
+    mutationFn: nodeService.createNode,
+    onSuccess: () => {
+      message.success('节点创建成功');
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      setModalVisible(false);
+      setEditingNode(null);
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '创建失败');
+    },
+  });
+
+  // 更新节点
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<ProxyNode> }) =>
+      nodeService.updateNode(id, data),
+    onSuccess: () => {
+      message.success('节点更新成功');
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      setModalVisible(false);
+      setEditingNode(null);
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '更新失败');
+    },
   });
 
   // 删除节点
@@ -177,10 +209,33 @@ const NodesPage: React.FC = () => {
     },
   ];
 
+  // 处理添加节点
+  const handleAdd = () => {
+    setEditingNode(null);
+    setModalVisible(true);
+  };
+
   // 处理编辑
   const handleEdit = (node: ProxyNode) => {
-    // TODO: 打开编辑模态框
-    console.log('Edit node:', node);
+    setEditingNode(node);
+    setModalVisible(true);
+  };
+
+  // 处理模态框确认
+  const handleModalOk = (values: Partial<ProxyNode>) => {
+    if (editingNode) {
+      // 更新节点
+      updateMutation.mutate({ id: editingNode.id, data: values });
+    } else {
+      // 创建节点
+      createMutation.mutate(values as ProxyNode);
+    }
+  };
+
+  // 处理模态框取消
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    setEditingNode(null);
   };
 
   // 处理状态切换
@@ -264,7 +319,7 @@ const NodesPage: React.FC = () => {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => {/* TODO: 打开添加模态框 */}}
+              onClick={handleAdd}
             >
               添加节点
             </Button>
@@ -354,6 +409,16 @@ const NodesPage: React.FC = () => {
           scroll={{ x: 800 }}
         />
       </Card>
+
+      {/* 节点编辑模态框 */}
+      <NodeModal
+        open={modalVisible}
+        onCancel={handleModalCancel}
+        onOk={handleModalOk}
+        initialValues={editingNode || undefined}
+        loading={createMutation.isPending || updateMutation.isPending}
+        title={editingNode ? '编辑节点' : '添加节点'}
+      />
     </div>
   );
 };
