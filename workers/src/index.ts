@@ -73,8 +73,8 @@ app.use('*', async (c, next) => {
   })(c, next);
 });
 
-// 速率限制
-app.use('/api/*', rateLimitMiddleware);
+// 速率限制（暂时禁用以简化演示）
+// app.use('/api/*', rateLimitMiddleware);
 
 // 错误处理
 app.onError(errorHandler);
