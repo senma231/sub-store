@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 # Account ID 需要明确指定以避免认证问题
 # 你需要从 Cloudflare Dashboard 获取你的 Account ID
 # 访问：https://dash.cloudflare.com/ 右侧边栏可以看到 Account ID
-account_id = "YOUR_ACCOUNT_ID_HERE"
+# account_id = "YOUR_ACCOUNT_ID_HERE"
 
 # Workers 路由配置
 # 实际部署地址：https://substore-api.senmago231.workers.dev
