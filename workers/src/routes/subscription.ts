@@ -46,7 +46,6 @@ const demoNodes: SimpleNode[] = [
 subscriptionRouter.get('/:format', async (c) => {
   try {
     const format = c.req.param('format');
-    const userAgent = c.req.header('User-Agent') || '';
 
     // 验证格式
     const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
@@ -57,10 +56,9 @@ subscriptionRouter.get('/:format', async (c) => {
     // 获取启用的节点
     const enabledNodes = demoNodes.filter(node => node.enabled);
 
-    // 简单测试
+    // 简单的 V2Ray 测试
     if (format === 'v2ray') {
-      const testContent = 'dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5';
-      return c.text(testContent, 200, {
+      return c.text('dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5', 200, {
         'Content-Type': 'text/plain',
         'Content-Disposition': 'attachment; filename="sub-store-v2ray.txt"',
         'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
