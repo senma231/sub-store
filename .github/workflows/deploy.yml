@@ -107,14 +107,11 @@ jobs:
         secrets: |
           ADMIN_TOKEN
           JWT_SECRET
-          CORS_ORIGINS
       env:
         # 管理员认证配置
         ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         # JWT 密钥（可选，系统会自动生成）
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        # CORS 配置
-        CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
 
   # 部署前端到 GitHub Pages (已禁用，使用 Cloudflare Pages)
   deploy-frontend-github:
