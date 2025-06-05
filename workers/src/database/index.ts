@@ -1,4 +1,66 @@
-import { DbNode, DbUser, DbSubscription, DbAccessLog, DbSetting, DbSession, DbResult, ProxyNode } from '../../../shared/types';
+// 基础类型定义
+export interface DbResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  meta?: any;
+}
+
+export interface ProxyNode {
+  id: string;
+  name: string;
+  type: string;
+  server: string;
+  port: number;
+  enabled: boolean;
+  tags?: string[];
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DbNode {
+  id: string;
+  name: string;
+  type: string;
+  server: string;
+  port: number;
+  enabled: boolean;
+  tags?: string;
+  remark?: string;
+  created_at: string;
+  updated_at: string;
+  // 协议特定字段
+  uuid?: string;
+  password?: string;
+  method?: string;
+  encryption?: string;
+  flow?: string;
+  network?: string;
+  security?: string;
+  sni?: string;
+  alpn?: string;
+  fingerprint?: string;
+  ws_path?: string;
+  ws_headers?: string;
+  h2_path?: string;
+  h2_host?: string;
+  grpc_service_name?: string;
+  grpc_mode?: string;
+  alter_id?: number;
+  tls?: boolean;
+  allow_insecure?: boolean;
+  username?: string;
+  plugin?: string;
+  plugin_opts?: string;
+  obfs?: string;
+  obfs_password?: string;
+  up_mbps?: number;
+  down_mbps?: number;
+  auth?: string;
+  auth_str?: string;
+  protocol?: string;
+}
 
 export interface DatabaseEnv {
   DB: D1Database;

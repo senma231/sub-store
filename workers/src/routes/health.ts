@@ -6,21 +6,31 @@ export const healthRouter = new Hono<{ Bindings: Env }>();
 // 基础健康检查
 healthRouter.get('/', async (c) => {
   const startTime = Date.now();
-  
+
   try {
-    // 测试 KV 存储连接
-    const kvTest = await c.env.SUB_STORE_KV.get('health_check');
-    await c.env.SUB_STORE_KV.put('health_check', Date.now().toString(), { expirationTtl: 60 });
-    
+    // 测试数据库连接（如果配置了 D1）
+    let dbStatus = 'not_configured';
+    if (c.env.DB) {
+      try {
+        // 简单的数据库连接测试
+        const result = await c.env.DB.prepare('SELECT 1 as test').first();
+        dbStatus = result ? 'healthy' : 'unhealthy';
+      } catch (dbError) {
+        console.warn('Database test failed:', dbError);
+        dbStatus = 'unhealthy';
+      }
+    }
+
     const responseTime = Date.now() - startTime;
-    
+
     return c.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      environment: c.env.ENVIRONMENT || 'unknown',
+      environment: c.env.ENVIRONMENT || 'production',
       version: '1.0.0',
       services: {
-        kv: 'healthy',
+        database: dbStatus,
+        api: 'healthy',
       },
       performance: {
         responseTime: `${responseTime}ms`,
@@ -28,14 +38,15 @@ healthRouter.get('/', async (c) => {
     });
   } catch (error) {
     console.error('Health check failed:', error);
-    
+
     return c.json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      environment: c.env.ENVIRONMENT || 'unknown',
+      environment: c.env.ENVIRONMENT || 'production',
       version: '1.0.0',
       services: {
-        kv: 'unhealthy',
+        database: 'error',
+        api: 'unhealthy',
       },
       error: error instanceof Error ? error.message : 'Unknown error',
     }, 503);
@@ -46,22 +57,31 @@ healthRouter.get('/', async (c) => {
 healthRouter.get('/detailed', async (c) => {
   const startTime = Date.now();
   const checks: Record<string, any> = {};
-  
+
   try {
-    // KV 存储检查
-    const kvStartTime = Date.now();
-    try {
-      await c.env.SUB_STORE_KV.get('health_check');
-      await c.env.SUB_STORE_KV.put('health_check_detailed', Date.now().toString(), { expirationTtl: 60 });
-      checks.kv = {
-        status: 'healthy',
-        responseTime: `${Date.now() - kvStartTime}ms`,
-      };
-    } catch (error) {
-      checks.kv = {
-        status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        responseTime: `${Date.now() - kvStartTime}ms`,
+    // 数据库检查
+    const dbStartTime = Date.now();
+    if (c.env.DB) {
+      try {
+        const result = await c.env.DB.prepare('SELECT 1 as test').first();
+        checks.database = {
+          status: result ? 'healthy' : 'unhealthy',
+          responseTime: `${Date.now() - dbStartTime}ms`,
+          type: 'D1',
+        };
+      } catch (error) {
+        checks.database = {
+          status: 'unhealthy',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          responseTime: `${Date.now() - dbStartTime}ms`,
+          type: 'D1',
+        };
+      }
+    } else {
+      checks.database = {
+        status: 'not_configured',
+        message: 'D1 database not configured',
+        type: 'D1',
       };
     }
     
@@ -76,15 +96,12 @@ healthRouter.get('/detailed', async (c) => {
       },
     };
     
-    // 内存使用检查 (如果可用)
-    if (typeof performance !== 'undefined' && performance.memory) {
-      checks.memory = {
-        status: 'healthy',
-        used: `${Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)}MB`,
-        total: `${Math.round(performance.memory.totalJSHeapSize / 1024 / 1024)}MB`,
-        limit: `${Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024)}MB`,
-      };
-    }
+    // 运行时检查
+    checks.runtime = {
+      status: 'healthy',
+      platform: 'Cloudflare Workers',
+      timestamp: new Date().toISOString(),
+    };
     
     const totalResponseTime = Date.now() - startTime;
     const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
@@ -117,9 +134,9 @@ healthRouter.get('/detailed', async (c) => {
 healthRouter.get('/ready', async (c) => {
   try {
     // 检查必要的环境变量
-    const requiredEnvVars = ['ADMIN_TOKEN', 'JWT_SECRET'];
+    const requiredEnvVars = ['ENVIRONMENT', 'APP_NAME'];
     const missingVars = requiredEnvVars.filter(varName => !c.env[varName as keyof Env]);
-    
+
     if (missingVars.length > 0) {
       return c.json({
         status: 'not_ready',
@@ -127,19 +144,29 @@ healthRouter.get('/ready', async (c) => {
         missingVariables: missingVars,
       }, 503);
     }
-    
-    // 检查 KV 存储
-    await c.env.SUB_STORE_KV.get('readiness_check');
-    
+
+    // 检查数据库连接（如果配置了）
+    if (c.env.DB) {
+      try {
+        await c.env.DB.prepare('SELECT 1').first();
+      } catch (dbError) {
+        return c.json({
+          status: 'not_ready',
+          message: 'Database connection failed',
+          error: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        }, 503);
+      }
+    }
+
     return c.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
       message: 'Service is ready to accept requests',
     });
-    
+
   } catch (error) {
     console.error('Readiness check failed:', error);
-    
+
     return c.json({
       status: 'not_ready',
       timestamp: new Date().toISOString(),
@@ -153,6 +180,7 @@ healthRouter.get('/live', async (c) => {
   return c.json({
     status: 'alive',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime ? `${Math.floor(process.uptime())}s` : 'unknown',
+    platform: 'Cloudflare Workers',
+    environment: c.env.ENVIRONMENT || 'production',
   });
 });

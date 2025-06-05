@@ -1,5 +1,41 @@
 import { Database } from './index';
-import { DbUser, DbSession, AuthUser, DbResult } from '../../../shared/types';
+
+// 数据库类型定义
+export interface DbUser {
+  id: string;
+  username: string;
+  password: string;
+  role: string;
+  email?: string;
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
+  enabled: boolean;
+}
+
+export interface DbSession {
+  id: string;
+  user_id: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: 'admin' | 'user';
+  permissions: string[];
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export interface DbResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  meta?: any;
+}
 
 export class AuthRepository {
   constructor(private db: Database) {}

@@ -46,41 +46,46 @@ authRouter.post('/login', async (c) => {
       });
     }
     
-    // 检查其他用户 (从 KV 存储)
-    const usersData = await c.env.SUB_STORE_KV.get('users');
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      const user = users.find((u: any) => u.username === username);
-      
-      if (user && user.password === password) {
-        const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-        const payload = {
-          userId: user.id,
-          username: user.username,
-          role: user.role || 'user',
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
-        };
-        
-        const token = await sign(payload, secret);
-        
-        // 更新最后登录时间
-        user.lastLogin = new Date().toISOString();
-        await c.env.SUB_STORE_KV.put('users', JSON.stringify(users));
-        
-        return c.json({
-          success: true,
-          data: {
-            token,
-            user: {
-              id: user.id,
-              username: user.username,
-              role: user.role || 'user',
+    // 检查其他用户 (从数据库)
+    if (c.env.DB) {
+      try {
+        const authRepo = c.get('authRepo');
+        const userResult = await authRepo.getUserByUsername(username);
+
+        if (userResult.success && userResult.data && userResult.data.password === password) {
+          const user = userResult.data;
+          const secret = new TextEncoder().encode(c.env.JWT_SECRET);
+
+          const token = await new SignJWT({
+            userId: user.id,
+            username: user.username,
+            role: user.role || 'user',
+          })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setIssuedAt()
+            .setExpirationTime('24h')
+            .sign(secret);
+
+          // 更新最后登录时间
+          await authRepo.updateLastLogin(user.id);
+
+          return c.json({
+            success: true,
+            data: {
+              token,
+              user: {
+                id: user.id,
+                username: user.username,
+                role: user.role || 'user',
+              },
+              expiresIn: 24 * 60 * 60,
             },
-            expiresIn: 24 * 60 * 60,
-          },
-          message: 'Login successful',
-        });
+            message: 'Login successful',
+          });
+        }
+      } catch (dbError) {
+        console.warn('Database user lookup failed:', dbError);
+        // 继续执行，返回无效凭据错误
       }
     }
     
@@ -117,8 +122,8 @@ authRouter.post('/verify', async (c) => {
     const secret = new TextEncoder().encode(c.env.JWT_SECRET);
     
     try {
-      const { payload } = await verify(token, secret);
-      
+      const { payload } = await jwtVerify(token, secret);
+
       return c.json({
         success: true,
         data: {
@@ -131,7 +136,7 @@ authRouter.post('/verify', async (c) => {
         },
         message: 'Token is valid',
       });
-      
+
     } catch (verifyError) {
       return c.json({
         success: false,
@@ -167,19 +172,19 @@ authRouter.post('/refresh', async (c) => {
     const secret = new TextEncoder().encode(c.env.JWT_SECRET);
     
     try {
-      const { payload } = await verify(token, secret);
-      
+      const { payload } = await jwtVerify(token, secret);
+
       // 生成新 token
-      const newPayload = {
+      const newToken = await new SignJWT({
         userId: payload.userId,
         username: payload.username,
         role: payload.role,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60),
-      };
-      
-      const newToken = await sign(newPayload, secret);
-      
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(secret);
+
       return c.json({
         success: true,
         data: {
@@ -193,7 +198,7 @@ authRouter.post('/refresh', async (c) => {
         },
         message: 'Token refreshed successfully',
       });
-      
+
     } catch (verifyError) {
       return c.json({
         success: false,
@@ -235,10 +240,10 @@ authRouter.post('/change-password', async (c) => {
     
     const token = authHeader.substring(7);
     const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-    const { payload } = await verify(token, secret);
-    
+    const { payload } = await jwtVerify(token, secret);
+
     const { currentPassword, newPassword } = await c.req.json();
-    
+
     if (!currentPassword || !newPassword) {
       return c.json({
         success: false,
@@ -246,7 +251,7 @@ authRouter.post('/change-password', async (c) => {
         message: 'Current password and new password are required',
       }, 400);
     }
-    
+
     // 管理员密码修改需要特殊处理
     if (payload.username === 'admin') {
       return c.json({
@@ -255,16 +260,22 @@ authRouter.post('/change-password', async (c) => {
         message: 'Admin password cannot be changed via API',
       }, 403);
     }
-    
-    // 修改普通用户密码
-    const usersData = await c.env.SUB_STORE_KV.get('users');
-    if (usersData) {
-      const users = JSON.parse(usersData);
-      const userIndex = users.findIndex((u: any) => u.id === payload.userId);
-      
-      if (userIndex !== -1) {
-        const user = users[userIndex];
-        
+
+    // 修改普通用户密码 (使用数据库)
+    if (c.env.DB) {
+      try {
+        const authRepo = c.get('authRepo');
+        const userResult = await authRepo.getUserById(payload.userId as string);
+
+        if (!userResult.success || !userResult.data) {
+          return c.json({
+            success: false,
+            error: 'User not found',
+            message: 'User does not exist',
+          }, 404);
+        }
+
+        const user = userResult.data;
         if (user.password !== currentPassword) {
           return c.json({
             success: false,
@@ -272,24 +283,28 @@ authRouter.post('/change-password', async (c) => {
             message: 'Current password is incorrect',
           }, 400);
         }
-        
-        user.password = newPassword;
-        user.updatedAt = new Date().toISOString();
-        
-        await c.env.SUB_STORE_KV.put('users', JSON.stringify(users));
-        
+
+        await authRepo.updateUserPassword(user.id, newPassword);
+
         return c.json({
           success: true,
           message: 'Password changed successfully',
         });
+      } catch (dbError) {
+        console.error('Database error during password change:', dbError);
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: 'Failed to update password',
+        }, 500);
       }
     }
-    
+
     return c.json({
       success: false,
-      error: 'User not found',
-      message: 'User does not exist',
-    }, 404);
+      error: 'Service unavailable',
+      message: 'Database not configured',
+    }, 503);
     
   } catch (error) {
     console.error('Change password error:', error);
