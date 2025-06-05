@@ -44,74 +44,66 @@ const demoNodes: SimpleNode[] = [
 
 // 获取订阅内容
 subscriptionRouter.get('/:format', async (c) => {
-  try {
-    const format = c.req.param('format');
+  const format = c.req.param('format');
 
-    // 验证格式
-    const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
-    if (!supportedFormats.includes(format)) {
-      return c.text(`Unsupported format: ${format}. Supported: ${supportedFormats.join(', ')}`, 400);
-    }
-
-    // 获取启用的节点
-    const enabledNodes = demoNodes.filter(node => node.enabled);
-
-    // 简单的 V2Ray 测试
-    if (format === 'v2ray') {
-      return c.text('dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5', 200, {
-        'Content-Type': 'text/plain',
-        'Content-Disposition': 'attachment; filename="sub-store-v2ray.txt"',
-        'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
-      });
-    }
-
-    // 简化的响应
-    if (format === 'clash') {
-      const clashConfig = {
-        port: 7890,
-        'socks-port': 7891,
-        'allow-lan': false,
-        mode: 'rule',
-        'log-level': 'info',
-        proxies: [
-          {
-            name: '演示 VLESS 节点',
-            type: 'vless',
-            server: 'demo.example.com',
-            port: 443,
-            uuid: '12345678-1234-1234-1234-123456789abc',
-            tls: true,
-            network: 'tcp'
-          }
-        ],
-        'proxy-groups': [
-          {
-            name: 'Proxy',
-            type: 'select',
-            proxies: ['DIRECT', '演示 VLESS 节点']
-          }
-        ],
-        rules: ['MATCH,Proxy']
-      };
-
-      return c.text(JSON.stringify(clashConfig, null, 2), 200, {
-        'Content-Type': 'application/yaml',
-        'Content-Disposition': 'attachment; filename="sub-store-clash.yaml"',
-        'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
-      });
-    }
-
-    // 其他格式返回简单文本
-    return c.text(`Sub-Store ${format} subscription\nNodes: ${enabledNodes.length}\nGenerated: ${new Date().toISOString()}`, 200, {
-      'Content-Type': 'text/plain',
-      'Content-Disposition': `attachment; filename="sub-store-${format}.txt"`,
-      'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
-    });
-    
-  } catch (error) {
-    console.error('Subscription error:', error);
-    return c.text('Internal server error', 500);
+  // 验证格式
+  const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
+  if (!supportedFormats.includes(format)) {
+    return c.text(`Unsupported format: ${format}. Supported: ${supportedFormats.join(', ')}`, 400);
   }
+
+  // 简单的 V2Ray 测试
+  if (format === 'v2ray') {
+    return c.text('dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5', 200, {
+      'Content-Type': 'text/plain',
+      'Content-Disposition': 'attachment; filename="sub-store-v2ray.txt"',
+      'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
+    });
+  }
+
+  // 简化的响应
+  if (format === 'clash') {
+    const clashConfig = {
+      port: 7890,
+      'socks-port': 7891,
+      'allow-lan': false,
+      mode: 'rule',
+      'log-level': 'info',
+      proxies: [
+        {
+          name: '演示 VLESS 节点',
+          type: 'vless',
+          server: 'demo.example.com',
+          port: 443,
+          uuid: '12345678-1234-1234-1234-123456789abc',
+          tls: true,
+          network: 'tcp'
+        }
+      ],
+      'proxy-groups': [
+        {
+          name: 'Proxy',
+          type: 'select',
+          proxies: ['DIRECT', '演示 VLESS 节点']
+        }
+      ],
+      rules: ['MATCH,Proxy']
+    };
+
+    return c.text(JSON.stringify(clashConfig, null, 2), 200, {
+      'Content-Type': 'application/yaml',
+      'Content-Disposition': 'attachment; filename="sub-store-clash.yaml"',
+      'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
+    });
+  }
+
+  // 其他格式返回简单文本
+  return c.text(`Sub-Store ${format} subscription\nNodes: 2\nGenerated: ${new Date().toISOString()}`, 200, {
+    'Content-Type': 'text/plain',
+    'Content-Disposition': `attachment; filename="sub-store-${format}.txt"`,
+    'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
+  });
+    
 });
 
 // 获取订阅信息
