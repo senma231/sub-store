@@ -196,6 +196,48 @@ nodesRouter.post('/', async (c) => {
   }
 });
 
+// 更新节点
+nodesRouter.put('/:id', async (c) => {
+  try {
+    const nodeId = c.req.param('id');
+    const body = await c.req.json();
+
+    const nodeIndex = memoryNodes.findIndex(n => n.id === nodeId);
+
+    if (nodeIndex === -1) {
+      return c.json({
+        success: false,
+        error: 'Node not found',
+        message: `Node with id '${nodeId}' does not exist`,
+      }, 404);
+    }
+
+    // 更新节点
+    const updatedNode = {
+      ...memoryNodes[nodeIndex],
+      ...body,
+      id: nodeId, // 确保ID不被修改
+      updatedAt: new Date().toISOString(),
+    };
+
+    memoryNodes[nodeIndex] = updatedNode;
+
+    return c.json({
+      success: true,
+      data: updatedNode,
+      message: 'Node updated successfully',
+    });
+
+  } catch (error) {
+    console.error('Failed to update node:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to update node',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
 // 删除节点
 nodesRouter.delete('/:id', async (c) => {
   try {
@@ -224,6 +266,77 @@ nodesRouter.delete('/:id', async (c) => {
     return c.json({
       success: false,
       error: 'Failed to delete node',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
+// 批量操作
+nodesRouter.post('/batch', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { operation, nodeIds } = body;
+
+    if (!operation || !nodeIds || !Array.isArray(nodeIds)) {
+      return c.json({
+        success: false,
+        error: 'Invalid request',
+        message: 'Operation and nodeIds array are required',
+      }, 400);
+    }
+
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
+
+    for (const nodeId of nodeIds) {
+      try {
+        const nodeIndex = memoryNodes.findIndex(n => n.id === nodeId);
+
+        if (nodeIndex === -1) {
+          results.failed++;
+          results.errors.push(`Node ${nodeId} not found`);
+          continue;
+        }
+
+        switch (operation) {
+          case 'enable':
+            memoryNodes[nodeIndex].enabled = true;
+            memoryNodes[nodeIndex].updatedAt = new Date().toISOString();
+            results.success++;
+            break;
+          case 'disable':
+            memoryNodes[nodeIndex].enabled = false;
+            memoryNodes[nodeIndex].updatedAt = new Date().toISOString();
+            results.success++;
+            break;
+          case 'delete':
+            memoryNodes.splice(nodeIndex, 1);
+            results.success++;
+            break;
+          default:
+            results.failed++;
+            results.errors.push(`Unknown operation: ${operation}`);
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push(`Failed to process node ${nodeId}: ${error}`);
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: results,
+      message: `Batch operation completed: ${results.success} success, ${results.failed} failed`,
+    });
+
+  } catch (error) {
+    console.error('Failed to perform batch operation:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to perform batch operation',
       message: error instanceof Error ? error.message : 'Unknown error',
     }, 500);
   }
