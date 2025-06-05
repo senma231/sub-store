@@ -57,130 +57,58 @@ subscriptionRouter.get('/:format', async (c) => {
     // 获取启用的节点
     const enabledNodes = demoNodes.filter(node => node.enabled);
 
-    // 简化的订阅内容生成
-    let content = '';
-    let contentType = 'text/plain';
-    let filename = `sub-store-${format}.txt`;
-
+    // 简单测试
     if (format === 'v2ray') {
-      // 生成 V2Ray 订阅（Base64 编码的 vmess/vless 链接）
-      const links = enabledNodes.map(node => {
-        if (node.type === 'vless') {
-          return `vless://${node.uuid}@${node.server}:${node.port}?type=tcp&security=tls#${encodeURIComponent(node.name)}`;
-        } else if (node.type === 'vmess') {
-          const vmessConfig = {
-            v: "2",
-            ps: node.name,
-            add: node.server,
-            port: node.port,
-            id: node.uuid,
-            aid: "0",
-            net: "tcp",
-            type: "none",
-            host: "",
-            path: "",
-            tls: "tls"
-          };
-          return 'vmess://' + btoa(JSON.stringify(vmessConfig));
-        }
-        return `# Unsupported node type: ${node.type}`;
+      const testContent = 'dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5';
+      return c.text(testContent, 200, {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': 'attachment; filename="sub-store-v2ray.txt"',
+        'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
       });
-      content = btoa(links.join('\n'));
-      contentType = 'text/plain';
-      filename = 'sub-store-v2ray.txt';
-    } else if (format === 'clash') {
-      // 生成 Clash 配置
-      const proxies = enabledNodes.map(node => {
-        if (node.type === 'vless') {
-          return {
-            name: node.name,
-            type: 'vless',
-            server: node.server,
-            port: node.port,
-            uuid: node.uuid,
-            tls: true,
-            network: 'tcp'
-          };
-        } else if (node.type === 'vmess') {
-          return {
-            name: node.name,
-            type: 'vmess',
-            server: node.server,
-            port: node.port,
-            uuid: node.uuid,
-            alterId: 0,
-            cipher: 'auto',
-            tls: true,
-            network: 'tcp'
-          };
-        }
-        return null;
-      }).filter(Boolean);
+    }
 
+    // 简化的响应
+    if (format === 'clash') {
       const clashConfig = {
         port: 7890,
         'socks-port': 7891,
         'allow-lan': false,
         mode: 'rule',
         'log-level': 'info',
-        'external-controller': '127.0.0.1:9090',
-        proxies,
+        proxies: [
+          {
+            name: '演示 VLESS 节点',
+            type: 'vless',
+            server: 'demo.example.com',
+            port: 443,
+            uuid: '12345678-1234-1234-1234-123456789abc',
+            tls: true,
+            network: 'tcp'
+          }
+        ],
         'proxy-groups': [
           {
             name: 'Proxy',
             type: 'select',
-            proxies: ['DIRECT', ...proxies.map(p => p.name)]
+            proxies: ['DIRECT', '演示 VLESS 节点']
           }
         ],
-        rules: [
-          'MATCH,Proxy'
-        ]
+        rules: ['MATCH,Proxy']
       };
-      content = `# Sub-Store Clash Configuration\n# Generated at ${new Date().toISOString()}\n\n` +
-                JSON.stringify(clashConfig, null, 2);
-      contentType = 'application/yaml';
-      filename = 'sub-store-clash.yaml';
-    } else if (format === 'shadowrocket') {
-      // 生成 Shadowrocket 订阅
-      const links = enabledNodes.map(node => {
-        if (node.type === 'vless') {
-          return `vless://${node.uuid}@${node.server}:${node.port}?type=tcp&security=tls#${encodeURIComponent(node.name)}`;
-        } else if (node.type === 'vmess') {
-          const vmessConfig = {
-            v: "2",
-            ps: node.name,
-            add: node.server,
-            port: node.port,
-            id: node.uuid,
-            aid: "0",
-            net: "tcp",
-            type: "none",
-            host: "",
-            path: "",
-            tls: "tls"
-          };
-          return 'vmess://' + btoa(JSON.stringify(vmessConfig));
-        }
-        return `# Unsupported node type: ${node.type}`;
+
+      return c.text(JSON.stringify(clashConfig, null, 2), 200, {
+        'Content-Type': 'application/yaml',
+        'Content-Disposition': 'attachment; filename="sub-store-clash.yaml"',
+        'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
       });
-      content = btoa(links.join('\n'));
-      contentType = 'text/plain';
-      filename = 'sub-store-shadowrocket.txt';
     }
 
-    // 设置响应头
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
+    // 其他格式返回简单文本
+    return c.text(`Sub-Store ${format} subscription\nNodes: ${enabledNodes.length}\nGenerated: ${new Date().toISOString()}`, 200, {
+      'Content-Type': 'text/plain',
+      'Content-Disposition': `attachment; filename="sub-store-${format}.txt"`,
       'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
-      'Profile-Update-Interval': '24',
-      'Profile-Title': 'Sub-Store Demo Subscription',
-    };
-
-    return c.text(content, 200, headers);
+    });
     
   } catch (error) {
     console.error('Subscription error:', error);
