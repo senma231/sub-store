@@ -143,16 +143,16 @@ export class NodesRepository {
           0, ?, ?
         )`,
         [
-          dbNode.id, dbNode.name, dbNode.type, dbNode.server, dbNode.port, 
-          dbNode.enabled ? 1 : 0, dbNode.tags, dbNode.remark,
-          dbNode.uuid, dbNode.encryption, dbNode.flow, dbNode.alter_id, 
-          dbNode.security, dbNode.password, dbNode.method, dbNode.username,
-          dbNode.network, dbNode.tls ? 1 : 0, dbNode.sni, dbNode.alpn, 
-          dbNode.fingerprint, dbNode.allow_insecure ? 1 : 0,
-          dbNode.ws_path, dbNode.ws_headers, dbNode.h2_path, dbNode.h2_host,
-          dbNode.grpc_service_name, dbNode.grpc_mode, dbNode.plugin, dbNode.plugin_opts,
-          dbNode.obfs, dbNode.obfs_password, dbNode.up_mbps, dbNode.down_mbps,
-          dbNode.auth, dbNode.auth_str, dbNode.protocol,
+          dbNode.id, dbNode.name, dbNode.type, dbNode.server, dbNode.port,
+          dbNode.enabled ? 1 : 0, dbNode.tags || null, dbNode.remark || null,
+          dbNode.uuid || null, dbNode.encryption || null, dbNode.flow || null, dbNode.alter_id || null,
+          dbNode.security || null, dbNode.password || null, dbNode.method || null, dbNode.username || null,
+          dbNode.network || null, dbNode.tls ? 1 : 0, dbNode.sni || null, dbNode.alpn || null,
+          dbNode.fingerprint || null, dbNode.allow_insecure ? 1 : 0,
+          dbNode.ws_path || null, dbNode.ws_headers || null, dbNode.h2_path || null, dbNode.h2_host || null,
+          dbNode.grpc_service_name || null, dbNode.grpc_mode || null, dbNode.plugin || null, dbNode.plugin_opts || null,
+          dbNode.obfs || null, dbNode.obfs_password || null, dbNode.up_mbps || null, dbNode.down_mbps || null,
+          dbNode.auth || null, dbNode.auth_str || null, dbNode.protocol || null,
           now, now
         ]
       );
@@ -194,16 +194,16 @@ export class NodesRepository {
           updated_at = ?
         WHERE id = ?`,
         [
-          dbNode.name, dbNode.type, dbNode.server, dbNode.port, 
-          dbNode.enabled ? 1 : 0, dbNode.tags, dbNode.remark,
-          dbNode.uuid, dbNode.encryption, dbNode.flow, dbNode.alter_id, 
-          dbNode.security, dbNode.password, dbNode.method, dbNode.username,
-          dbNode.network, dbNode.tls ? 1 : 0, dbNode.sni, dbNode.alpn, 
-          dbNode.fingerprint, dbNode.allow_insecure ? 1 : 0,
-          dbNode.ws_path, dbNode.ws_headers, dbNode.h2_path, dbNode.h2_host,
-          dbNode.grpc_service_name, dbNode.grpc_mode, dbNode.plugin, dbNode.plugin_opts,
-          dbNode.obfs, dbNode.obfs_password, dbNode.up_mbps, dbNode.down_mbps,
-          dbNode.auth, dbNode.auth_str, dbNode.protocol,
+          dbNode.name, dbNode.type, dbNode.server, dbNode.port,
+          dbNode.enabled ? 1 : 0, dbNode.tags || null, dbNode.remark || null,
+          dbNode.uuid || null, dbNode.encryption || null, dbNode.flow || null, dbNode.alter_id || null,
+          dbNode.security || null, dbNode.password || null, dbNode.method || null, dbNode.username || null,
+          dbNode.network || null, dbNode.tls ? 1 : 0, dbNode.sni || null, dbNode.alpn || null,
+          dbNode.fingerprint || null, dbNode.allow_insecure ? 1 : 0,
+          dbNode.ws_path || null, dbNode.ws_headers || null, dbNode.h2_path || null, dbNode.h2_host || null,
+          dbNode.grpc_service_name || null, dbNode.grpc_mode || null, dbNode.plugin || null, dbNode.plugin_opts || null,
+          dbNode.obfs || null, dbNode.obfs_password || null, dbNode.up_mbps || null, dbNode.down_mbps || null,
+          dbNode.auth || null, dbNode.auth_str || null, dbNode.protocol || null,
           new Date().toISOString(),
           id
         ]

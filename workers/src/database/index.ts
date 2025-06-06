@@ -319,118 +319,118 @@ export class Database {
       type: node.type,
       server: node.server,
       port: node.port,
-      enabled: node.enabled,
-      tags: node.tags ? JSON.stringify(node.tags) : undefined,
-      remark: node.remark,
+      enabled: node.enabled !== undefined ? node.enabled : true,
+      tags: node.tags ? JSON.stringify(node.tags) : null,
+      remark: node.remark || null,
       updated_at: new Date().toISOString(),
     };
 
-    // 根据节点类型设置特定字段
+    // 根据节点类型设置特定字段，为缺失的必需字段提供默认值
     switch (node.type) {
       case 'vless':
         const vlessNode = node as any;
         Object.assign(dbNode, {
-          uuid: vlessNode.uuid,
-          encryption: vlessNode.encryption,
-          flow: vlessNode.flow,
-          network: vlessNode.network,
-          security: vlessNode.security,
-          sni: vlessNode.sni,
-          alpn: vlessNode.alpn ? JSON.stringify(vlessNode.alpn) : undefined,
-          fingerprint: vlessNode.fingerprint,
-          ws_path: vlessNode.wsPath,
-          ws_headers: vlessNode.wsHeaders ? JSON.stringify(vlessNode.wsHeaders) : undefined,
-          h2_path: vlessNode.h2Path,
-          h2_host: vlessNode.h2Host ? JSON.stringify(vlessNode.h2Host) : undefined,
-          grpc_service_name: vlessNode.grpcServiceName,
-          grpc_mode: vlessNode.grpcMode,
+          uuid: vlessNode.uuid || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          encryption: vlessNode.encryption || 'none',
+          flow: vlessNode.flow || null,
+          network: vlessNode.network || 'tcp',
+          security: vlessNode.security || 'none',
+          sni: vlessNode.sni || null,
+          alpn: vlessNode.alpn ? JSON.stringify(vlessNode.alpn) : null,
+          fingerprint: vlessNode.fingerprint || null,
+          ws_path: vlessNode.wsPath || null,
+          ws_headers: vlessNode.wsHeaders ? JSON.stringify(vlessNode.wsHeaders) : null,
+          h2_path: vlessNode.h2Path || null,
+          h2_host: vlessNode.h2Host ? JSON.stringify(vlessNode.h2Host) : null,
+          grpc_service_name: vlessNode.grpcServiceName || null,
+          grpc_mode: vlessNode.grpcMode || null,
         });
         break;
 
       case 'vmess':
         const vmessNode = node as any;
         Object.assign(dbNode, {
-          uuid: vmessNode.uuid,
-          alter_id: vmessNode.alterId,
-          security: vmessNode.security,
-          network: vmessNode.network,
-          tls: vmessNode.tls,
-          sni: vmessNode.sni,
-          alpn: vmessNode.alpn ? JSON.stringify(vmessNode.alpn) : undefined,
-          ws_path: vmessNode.wsPath,
-          ws_headers: vmessNode.wsHeaders ? JSON.stringify(vmessNode.wsHeaders) : undefined,
-          h2_path: vmessNode.h2Path,
-          h2_host: vmessNode.h2Host ? JSON.stringify(vmessNode.h2Host) : undefined,
-          grpc_service_name: vmessNode.grpcServiceName,
-          grpc_mode: vmessNode.grpcMode,
+          uuid: vmessNode.uuid || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          alter_id: vmessNode.alterId || 0,
+          security: vmessNode.security || 'auto',
+          network: vmessNode.network || 'tcp',
+          tls: vmessNode.tls || false,
+          sni: vmessNode.sni || null,
+          alpn: vmessNode.alpn ? JSON.stringify(vmessNode.alpn) : null,
+          ws_path: vmessNode.wsPath || null,
+          ws_headers: vmessNode.wsHeaders ? JSON.stringify(vmessNode.wsHeaders) : null,
+          h2_path: vmessNode.h2Path || null,
+          h2_host: vmessNode.h2Host ? JSON.stringify(vmessNode.h2Host) : null,
+          grpc_service_name: vmessNode.grpcServiceName || null,
+          grpc_mode: vmessNode.grpcMode || null,
         });
         break;
 
       case 'trojan':
         const trojanNode = node as any;
         Object.assign(dbNode, {
-          password: trojanNode.password,
-          sni: trojanNode.sni,
-          alpn: trojanNode.alpn ? JSON.stringify(trojanNode.alpn) : undefined,
-          fingerprint: trojanNode.fingerprint,
-          allow_insecure: trojanNode.allowInsecure,
-          network: trojanNode.network,
-          ws_path: trojanNode.wsPath,
-          ws_headers: trojanNode.wsHeaders ? JSON.stringify(trojanNode.wsHeaders) : undefined,
-          grpc_service_name: trojanNode.grpcServiceName,
-          grpc_mode: trojanNode.grpcMode,
+          password: trojanNode.password || 'default-password',
+          sni: trojanNode.sni || null,
+          alpn: trojanNode.alpn ? JSON.stringify(trojanNode.alpn) : null,
+          fingerprint: trojanNode.fingerprint || null,
+          allow_insecure: trojanNode.allowInsecure || false,
+          network: trojanNode.network || 'tcp',
+          ws_path: trojanNode.wsPath || null,
+          ws_headers: trojanNode.wsHeaders ? JSON.stringify(trojanNode.wsHeaders) : null,
+          grpc_service_name: trojanNode.grpcServiceName || null,
+          grpc_mode: trojanNode.grpcMode || null,
         });
         break;
 
       case 'ss':
         const ssNode = node as any;
         Object.assign(dbNode, {
-          method: ssNode.method,
-          password: ssNode.password,
-          plugin: ssNode.plugin,
-          plugin_opts: ssNode.pluginOpts,
+          method: ssNode.method || 'aes-256-gcm',
+          password: ssNode.password || 'default-password',
+          plugin: ssNode.plugin || null,
+          plugin_opts: ssNode.pluginOpts || null,
         });
         break;
 
       case 'socks5':
         const socks5Node = node as any;
         Object.assign(dbNode, {
-          username: socks5Node.username,
-          password: socks5Node.password,
-          tls: socks5Node.tls,
-          sni: socks5Node.sni,
-          fingerprint: socks5Node.fingerprint,
+          username: socks5Node.username || null,
+          password: socks5Node.password || null,
+          tls: socks5Node.tls || false,
+          sni: socks5Node.sni || null,
+          fingerprint: socks5Node.fingerprint || null,
         });
         break;
 
       case 'hy2':
         const hy2Node = node as any;
         Object.assign(dbNode, {
-          password: hy2Node.password,
-          obfs: hy2Node.obfs,
-          obfs_password: hy2Node.obfsPassword,
-          sni: hy2Node.sni,
-          alpn: hy2Node.alpn ? JSON.stringify(hy2Node.alpn) : undefined,
-          fingerprint: hy2Node.fingerprint,
-          allow_insecure: hy2Node.allowInsecure,
-          up_mbps: hy2Node.upMbps,
-          down_mbps: hy2Node.downMbps,
+          password: hy2Node.password || 'default-password',
+          obfs: hy2Node.obfs || null,
+          obfs_password: hy2Node.obfsPassword || null,
+          sni: hy2Node.sni || null,
+          alpn: hy2Node.alpn ? JSON.stringify(hy2Node.alpn) : null,
+          fingerprint: hy2Node.fingerprint || null,
+          allow_insecure: hy2Node.allowInsecure || false,
+          up_mbps: hy2Node.upMbps || null,
+          down_mbps: hy2Node.downMbps || null,
         });
         break;
 
       case 'hy':
         const hyNode = node as any;
         Object.assign(dbNode, {
-          auth: hyNode.auth,
-          auth_str: hyNode.authStr,
-          obfs: hyNode.obfs,
-          protocol: hyNode.protocol,
-          sni: hyNode.sni,
-          alpn: hyNode.alpn ? JSON.stringify(hyNode.alpn) : undefined,
-          fingerprint: hyNode.fingerprint,
-          allow_insecure: hyNode.allowInsecure,
-          up_mbps: hyNode.upMbps,
-          down_mbps: hyNode.downMbps,
+          auth: hyNode.auth || null,
+          auth_str: hyNode.authStr || null,
+          obfs: hyNode.obfs || null,
+          protocol: hyNode.protocol || null,
+          sni: hyNode.sni || null,
+          alpn: hyNode.alpn ? JSON.stringify(hyNode.alpn) : null,
+          fingerprint: hyNode.fingerprint || null,
+          allow_insecure: hyNode.allowInsecure || false,
+          up_mbps: hyNode.upMbps || null,
+          down_mbps: hyNode.downMbps || null,
         });
         break;
     }
