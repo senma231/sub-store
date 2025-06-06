@@ -279,7 +279,9 @@ const NodesPage: React.FC = () => {
       setSelectedRowKeys([]);
     },
     onError: (error: any) => {
-      message.error(error.response?.data?.message || '创建自定义订阅失败');
+      console.error('创建自定义订阅失败:', error);
+      const errorMessage = error.response?.data?.message || error.message || '创建自定义订阅失败';
+      message.error(`创建失败: ${errorMessage}`);
     },
   });
 

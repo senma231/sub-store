@@ -167,9 +167,16 @@ subscriptionRouter.get('/', async (c) => {
 subscriptionRouter.get('/custom/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
+    console.log('Accessing custom subscription with UUID:', uuid);
+
     const subscription = getCustomSubscription(uuid);
+    console.log('Found subscription:', subscription ? 'YES' : 'NO');
 
     if (!subscription) {
+      // 添加调试信息
+      const { getAllCustomSubscriptions } = await import('../data/customSubscriptions');
+      const allSubscriptions = getAllCustomSubscriptions();
+      console.log('Available subscriptions:', allSubscriptions.map(s => s.uuid));
       return c.text('Custom subscription not found', 404);
     }
 
