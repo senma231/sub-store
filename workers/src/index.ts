@@ -33,10 +33,10 @@ export interface Env extends Record<string, unknown> {
 // 扩展 Hono 上下文类型
 declare module 'hono' {
   interface ContextVariableMap {
-    db: Database;
-    nodesRepo: NodesRepository;
-    authRepo: AuthRepository;
-    statsRepo: StatsRepository;
+    db: Database | null;
+    nodesRepo: NodesRepository | null;
+    authRepo: AuthRepository | null;
+    statsRepo: StatsRepository | null;
     user: { id: string; username: string; role: string };
   }
 }
@@ -45,30 +45,46 @@ const app = new Hono<Env>();
 
 // 数据库初始化中间件
 app.use('*', async (c, next) => {
-  const db = new Database(c.env.DB);
-  const nodesRepo = new NodesRepository(db);
-  const authRepo = new AuthRepository(db);
-  const statsRepo = new StatsRepository(db);
+  try {
+    // 检查是否配置了 D1 数据库
+    if (c.env.DB) {
+      const db = new Database(c.env.DB);
+      const nodesRepo = new NodesRepository(db);
+      const authRepo = new AuthRepository(db);
+      const statsRepo = new StatsRepository(db);
 
-  c.set('db', db);
-  c.set('nodesRepo', nodesRepo);
-  c.set('authRepo', authRepo);
-  c.set('statsRepo', statsRepo);
+      c.set('db', db);
+      c.set('nodesRepo', nodesRepo);
+      c.set('authRepo', authRepo);
+      c.set('statsRepo', statsRepo);
 
-  // 在第一次请求时初始化数据库
-  if (!globalThis.dbInitialized) {
-    try {
-      const { initializeDatabase } = await import('./database/init');
-      await initializeDatabase(db);
-      globalThis.dbInitialized = true;
-      console.log('Database initialized successfully');
-    } catch (error) {
-      console.error('Database initialization failed:', error);
-      // 继续处理请求，但记录错误
+      // 在第一次请求时初始化数据库
+      if (!globalThis.dbInitialized) {
+        try {
+          const { initializeDatabase } = await import('./database/init');
+          await initializeDatabase(db);
+          globalThis.dbInitialized = true;
+          console.log('Database initialized successfully');
+        } catch (error) {
+          console.error('Database initialization failed:', error);
+          // 继续处理请求，但记录错误
+        }
+      }
+    } else {
+      console.warn('D1 database not configured, running in memory-only mode');
+      // 设置空的数据库对象以避免错误
+      c.set('db', null);
+      c.set('nodesRepo', null);
+      c.set('authRepo', null);
+      c.set('statsRepo', null);
     }
-  }
 
-  await next();
+    await next();
+  } catch (error) {
+    console.error('Database middleware error:', error);
+    // 继续处理请求，但记录错误
+    await next();
+  }
 });
 
 // 全局中间件
