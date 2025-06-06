@@ -231,19 +231,30 @@ nodesRouter.get('/export', async (c) => {
 nodesRouter.get('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
-    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const nodesRepo = c.get('nodesRepo');
 
-    const result = await nodesRepo.getNodeById(nodeId);
+    let node: any = null;
 
-    if (!result.success) {
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: result.error,
-      }, 500);
+    if (nodesRepo) {
+      // 使用数据库存储
+      const result = await nodesRepo.getNodeById(nodeId);
+
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: result.error,
+        }, 500);
+      }
+
+      node = result.data;
+    } else {
+      // 使用内存存储作为回退
+      console.log('Using memory storage for get node by id');
+      node = memoryNodes.find(n => n.id === nodeId);
     }
 
-    if (!result.data) {
+    if (!node) {
       return c.json({
         success: false,
         error: 'Node not found',
@@ -253,7 +264,7 @@ nodesRouter.get('/:id', async (c) => {
 
     return c.json({
       success: true,
-      data: result.data,
+      data: node,
     });
   } catch (error) {
     console.error('Failed to get node:', error);
@@ -269,7 +280,7 @@ nodesRouter.get('/:id', async (c) => {
 nodesRouter.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const nodesRepo = c.get('nodesRepo');
 
     // 基础验证
     if (!body.name || !body.type || !body.server || !body.port) {
@@ -290,24 +301,50 @@ nodesRouter.post('/', async (c) => {
       updatedAt: now,
     };
 
-    // 创建节点
-    const result = await nodesRepo.createNode(node);
+    let result: any;
 
-    if (!result.success) {
-      // 检查是否是重复错误
-      if (result.error?.includes('UNIQUE constraint failed')) {
+    if (nodesRepo) {
+      // 使用数据库存储
+      result = await nodesRepo.createNode(node);
+
+      if (!result.success) {
+        // 检查是否是重复错误
+        if (result.error?.includes('UNIQUE constraint failed')) {
+          return c.json({
+            success: false,
+            error: 'Conflict',
+            message: 'Node with this ID or name already exists',
+          }, 409);
+        }
+
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: result.error,
+        }, 500);
+      }
+    } else {
+      // 使用内存存储作为回退
+      console.log('Using memory storage for node creation');
+
+      // 检查是否已存在相同的节点
+      const existingNode = memoryNodes.find(n =>
+        n.name === node.name || (n.server === node.server && n.port === node.port && n.type === node.type)
+      );
+
+      if (existingNode) {
         return c.json({
           success: false,
           error: 'Conflict',
-          message: 'Node with this ID or name already exists',
+          message: 'Node with this name or server:port already exists',
         }, 409);
       }
 
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: result.error,
-      }, 500);
+      const createdNode = addNode(node);
+      result = {
+        success: true,
+        data: createdNode
+      };
     }
 
     return c.json({
@@ -330,42 +367,79 @@ nodesRouter.put('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
     const body = await c.req.json();
-    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const nodesRepo = c.get('nodesRepo');
 
-    // 首先检查节点是否存在
-    const existingResult = await nodesRepo.getNodeById(nodeId);
-    if (!existingResult.success) {
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: existingResult.error,
-      }, 500);
-    }
+    let existingNode: any = null;
+    let result: any;
 
-    if (!existingResult.data) {
-      return c.json({
-        success: false,
-        error: 'Node not found',
-        message: `Node with id '${nodeId}' does not exist`,
-      }, 404);
-    }
+    if (nodesRepo) {
+      // 使用数据库存储
+      const existingResult = await nodesRepo.getNodeById(nodeId);
+      if (!existingResult.success) {
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: existingResult.error,
+        }, 500);
+      }
 
-    // 更新节点
-    const updatedNode = {
-      ...existingResult.data,
-      ...body,
-      id: nodeId, // 确保ID不被修改
-      updatedAt: new Date().toISOString(),
-    };
+      if (!existingResult.data) {
+        return c.json({
+          success: false,
+          error: 'Node not found',
+          message: `Node with id '${nodeId}' does not exist`,
+        }, 404);
+      }
 
-    const result = await nodesRepo.updateNode(nodeId, updatedNode);
+      existingNode = existingResult.data;
 
-    if (!result.success) {
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: result.error,
-      }, 500);
+      // 更新节点
+      const updatedNode = {
+        ...existingNode,
+        ...body,
+        id: nodeId, // 确保ID不被修改
+        updatedAt: new Date().toISOString(),
+      };
+
+      result = await nodesRepo.updateNode(nodeId, updatedNode);
+
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: result.error,
+        }, 500);
+      }
+    } else {
+      // 使用内存存储作为回退
+      console.log('Using memory storage for node update');
+
+      existingNode = memoryNodes.find(n => n.id === nodeId);
+      if (!existingNode) {
+        return c.json({
+          success: false,
+          error: 'Node not found',
+          message: `Node with id '${nodeId}' does not exist`,
+        }, 404);
+      }
+
+      const updatedNode = updateNode(nodeId, {
+        ...body,
+        updatedAt: new Date().toISOString(),
+      });
+
+      if (!updatedNode) {
+        return c.json({
+          success: false,
+          error: 'Failed to update node',
+          message: 'Node update failed',
+        }, 500);
+      }
+
+      result = {
+        success: true,
+        data: updatedNode
+      };
     }
 
     return c.json({
@@ -388,40 +462,73 @@ nodesRouter.put('/:id', async (c) => {
 nodesRouter.delete('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
-    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const nodesRepo = c.get('nodesRepo');
 
-    // 首先获取节点信息
-    const existingResult = await nodesRepo.getNodeById(nodeId);
-    if (!existingResult.success) {
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: existingResult.error,
-      }, 500);
-    }
+    let existingNode: any = null;
+    let result: any;
 
-    if (!existingResult.data) {
-      return c.json({
-        success: false,
-        error: 'Node not found',
-        message: `Node with id '${nodeId}' does not exist`,
-      }, 404);
-    }
+    if (nodesRepo) {
+      // 使用数据库存储
+      const existingResult = await nodesRepo.getNodeById(nodeId);
+      if (!existingResult.success) {
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: existingResult.error,
+        }, 500);
+      }
 
-    // 删除节点
-    const result = await nodesRepo.deleteNode(nodeId);
+      if (!existingResult.data) {
+        return c.json({
+          success: false,
+          error: 'Node not found',
+          message: `Node with id '${nodeId}' does not exist`,
+        }, 404);
+      }
 
-    if (!result.success) {
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: result.error,
-      }, 500);
+      existingNode = existingResult.data;
+
+      // 删除节点
+      result = await nodesRepo.deleteNode(nodeId);
+
+      if (!result.success) {
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: result.error,
+        }, 500);
+      }
+    } else {
+      // 使用内存存储作为回退
+      console.log('Using memory storage for node deletion');
+
+      existingNode = memoryNodes.find(n => n.id === nodeId);
+      if (!existingNode) {
+        return c.json({
+          success: false,
+          error: 'Node not found',
+          message: `Node with id '${nodeId}' does not exist`,
+        }, 404);
+      }
+
+      const deletedNode = deleteNode(nodeId);
+      if (!deletedNode) {
+        return c.json({
+          success: false,
+          error: 'Failed to delete node',
+          message: 'Node deletion failed',
+        }, 500);
+      }
+
+      result = {
+        success: true,
+        data: deletedNode
+      };
     }
 
     return c.json({
       success: true,
-      data: existingResult.data,
+      data: existingNode,
       message: 'Node deleted successfully',
     });
   } catch (error) {
