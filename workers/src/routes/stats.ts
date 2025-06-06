@@ -3,39 +3,14 @@ import { Env } from '../index';
 
 export const statsRouter = new Hono<{ Bindings: Env }>();
 
-// 模拟节点数据（与 nodes.ts 保持一致）
-const demoNodes = [
-  {
-    id: 'demo-vless-1',
-    name: '演示 VLESS 节点',
-    type: 'vless',
-    server: 'demo.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '12345678-1234-1234-1234-123456789abc',
-    remark: '这是一个演示节点',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'demo-vmess-1',
-    name: '演示 VMess 节点',
-    type: 'vmess',
-    server: 'demo2.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '87654321-4321-4321-4321-cba987654321',
-    remark: '这是另一个演示节点',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
+
 
 // 获取统计信息
 statsRouter.get('/', async (c) => {
   try {
-    // 使用内存数据而不是 KV 存储
-    const nodes = demoNodes;
+    // 使用实际的内存节点数据
+    const { memoryNodes } = await import('../data/memoryNodes');
+    const nodes = memoryNodes;
 
     // 模拟订阅统计
     const totalStats = {
@@ -46,7 +21,7 @@ statsRouter.get('/', async (c) => {
         shadowrocket: 300,
       },
     };
-    
+
     // 生成模拟的最近7天统计
     const requestsByDate: Record<string, number> = {};
 
@@ -76,12 +51,12 @@ statsRouter.get('/', async (c) => {
       requestsByDate,
       topNodes: [], // 简化实现
     };
-    
+
     return c.json({
       success: true,
       data: statistics,
     });
-    
+
   } catch (error) {
     console.error('Failed to get statistics:', error);
     return c.json({
@@ -98,8 +73,9 @@ statsRouter.get('/detailed', async (c) => {
     const days = parseInt(c.req.query('days') || '30');
     const maxDays = Math.min(days, 90); // 最多90天
 
-    // 使用内存数据而不是 KV 存储
-    const nodes = demoNodes;
+    // 使用实际的内存节点数据
+    const { memoryNodes } = await import('../data/memoryNodes');
+    const nodes = memoryNodes;
 
     // 生成模拟的指定天数统计
     const dailyStats = [];

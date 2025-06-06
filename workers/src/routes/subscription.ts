@@ -19,29 +19,16 @@ interface SimpleNode {
 
 export const subscriptionRouter = new Hono<{ Bindings: Env }>();
 
-// 演示节点数据
-const demoNodes: SimpleNode[] = [
-  {
-    id: 'demo-vless-1',
-    name: '演示 VLESS 节点',
-    type: 'vless',
-    server: 'demo.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '12345678-1234-1234-1234-123456789abc',
-    remark: '这是一个演示节点',
-  },
-  {
-    id: 'demo-vmess-1',
-    name: '演示 VMess 节点',
-    type: 'vmess',
-    server: 'demo2.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '87654321-4321-4321-4321-cba987654321',
-    remark: '这是另一个演示节点',
+// 获取实际的内存节点数据
+const getMemoryNodes = async () => {
+  try {
+    const { memoryNodes } = await import('../data/memoryNodes');
+    return memoryNodes;
+  } catch (error) {
+    console.error('Failed to load memory nodes:', error);
+    return [];
   }
-];
+};
 
 // 获取订阅内容
 subscriptionRouter.get('/:format', async (c) => {
@@ -121,7 +108,8 @@ subscriptionRouter.get('/:format/info', async (c) => {
       }, 400);
     }
 
-    const enabledNodes = demoNodes.filter(node => node.enabled);
+    const memoryNodes = await getMemoryNodes();
+    const enabledNodes = memoryNodes.filter(node => node.enabled);
 
     // 统计节点类型
     const nodeStats = enabledNodes.reduce((stats, node) => {
@@ -138,7 +126,7 @@ subscriptionRouter.get('/:format/info', async (c) => {
           contentType: format === 'clash' ? 'application/yaml' : 'text/plain',
         },
         statistics: {
-          totalNodes: demoNodes.length,
+          totalNodes: memoryNodes.length,
           enabledNodes: enabledNodes.length,
           nodeTypes: nodeStats,
         },
@@ -182,13 +170,16 @@ subscriptionRouter.get('/', async (c) => {
     }
   ];
 
+  // 获取实际节点数据用于统计
+  const { memoryNodes } = await import('../data/memoryNodes');
+
   return c.json({
     success: true,
     data: {
       formats,
       statistics: {
-        totalNodes: demoNodes.length,
-        enabledNodes: demoNodes.filter(n => n.enabled).length,
+        totalNodes: memoryNodes.length,
+        enabledNodes: memoryNodes.filter(n => n.enabled).length,
       },
       examples: {
         v2ray: `${c.req.url}/v2ray`,
@@ -229,7 +220,8 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     }
 
     // 获取关联的节点
-    const selectedNodes = demoNodes.filter(node =>
+    const { memoryNodes } = await import('../data/memoryNodes');
+    const selectedNodes = memoryNodes.filter(node =>
       subscription.nodeIds.includes(node.id) && node.enabled
     );
 

@@ -17,29 +17,16 @@ const customSubscriptions = new Map<string, {
   lastAccessAt?: string;
 }>();
 
-// 演示节点数据（与 nodes.ts 保持一致）
-const demoNodes = [
-  {
-    id: 'demo-vless-1',
-    name: '演示 VLESS 节点',
-    type: 'vless',
-    server: 'demo.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '12345678-1234-1234-1234-123456789abc',
-    remark: '这是一个演示节点',
-  },
-  {
-    id: 'demo-vmess-1',
-    name: '演示 VMess 节点',
-    type: 'vmess',
-    server: 'demo2.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '87654321-4321-4321-4321-cba987654321',
-    remark: '这是另一个演示节点',
+// 获取实际的内存节点数据
+const getMemoryNodes = async () => {
+  try {
+    const { memoryNodes } = await import('../data/memoryNodes');
+    return memoryNodes;
+  } catch (error) {
+    console.error('Failed to load memory nodes:', error);
+    return [];
   }
-];
+};
 
 // 创建自定义订阅
 customSubscriptionsRouter.post('/', async (c) => {
@@ -56,8 +43,9 @@ customSubscriptionsRouter.post('/', async (c) => {
     }
 
     // 验证节点ID
-    const validNodeIds = body.nodeIds.filter((id: string) => 
-      demoNodes.some(node => node.id === id)
+    const memoryNodes = await getMemoryNodes();
+    const validNodeIds = body.nodeIds.filter((id: string) =>
+      memoryNodes.some(node => node.id === id)
     );
 
     if (validNodeIds.length === 0) {
@@ -159,7 +147,8 @@ customSubscriptionsRouter.get('/:uuid', async (c) => {
     }
 
     // 获取关联的节点信息
-    const nodes = demoNodes.filter(node => subscription.nodeIds.includes(node.id));
+    const memoryNodes = await getMemoryNodes();
+    const nodes = memoryNodes.filter(node => subscription.nodeIds.includes(node.id));
 
     return c.json({
       success: true,
