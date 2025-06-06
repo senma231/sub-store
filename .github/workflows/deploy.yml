@@ -80,23 +80,45 @@ jobs:
     - name: Install workers dependencies
       run: cd workers && npm install --legacy-peer-deps
 
-    # Wrangler deploy 会自动处理 TypeScript 编译和构建
-        
-    # 暂时跳过 D1 数据库配置，等 Workers 部署成功后再配置
-    # - name: Create D1 Database (if not exists)
-    #   uses: cloudflare/wrangler-action@v3
-    #   with:
-    #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    #     workingDirectory: workers
-    #     command: d1 create sub-store-db
-    #   continue-on-error: true # 数据库可能已存在
+    # 配置 D1 数据库 - 使用 GitHub Secrets 动态注入配置
+    - name: Configure D1 Database
+      run: |
+        cd workers
+        echo "🗄️ 配置 D1 数据库..."
 
-    # - name: Run D1 Migrations
-    #   uses: cloudflare/wrangler-action@v3
-    #   with:
-    #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    #     workingDirectory: workers
-    #     command: d1 execute sub-store-db --file=./schema.sql
+        # 检查必要的 secrets 是否存在
+        if [ -z "${{ secrets.CF_D1_DATABASE_ID }}" ] || [ -z "${{ secrets.CF_D1_DATABASE_NAME }}" ]; then
+          echo "❌ 缺少必要的数据库配置 secrets"
+          echo "请确保已设置 CF_D1_DATABASE_ID 和 CF_D1_DATABASE_NAME"
+          exit 1
+        fi
+
+        # 取消注释并配置 D1 数据库
+        sed -i 's/# \[\[d1_databases\]\]/[[d1_databases]]/' wrangler.toml
+        sed -i 's/# binding = "DB"/binding = "DB"/' wrangler.toml
+        sed -i 's/# database_name = "sub-store-db"/database_name = "${{ secrets.CF_D1_DATABASE_NAME }}"/' wrangler.toml
+        sed -i 's/# database_id = "YOUR_REAL_DATABASE_ID_HERE"/database_id = "${{ secrets.CF_D1_DATABASE_ID }}"/' wrangler.toml
+
+        echo "✅ D1 数据库配置完成"
+        echo "📋 当前配置："
+        grep -A 5 "d1_databases" wrangler.toml || echo "配置未找到"
+
+    # 验证数据库连接并运行迁移
+    - name: Setup D1 Database
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: workers
+        command: d1 info ${{ secrets.CF_D1_DATABASE_NAME }}
+      continue-on-error: true
+
+    - name: Run D1 Database Migrations
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: workers
+        command: d1 execute ${{ secrets.CF_D1_DATABASE_NAME }} --file=./schema.sql
+      continue-on-error: true
 
     - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@v3

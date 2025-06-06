@@ -11,8 +11,8 @@ compatibility_flags = ["nodejs_compat"]
 # Workers 路由配置
 # 实际部署地址：https://substore-api.senmago231.workers.dev
 
-# D1 数据库配置 (暂时禁用，等部署成功后再启用)
-# 注意：需要先创建真实的 D1 数据库，然后配置正确的 database_id
+# D1 数据库配置 (通过 GitHub Actions 动态注入)
+# 注意：这些配置将在部署时通过 GitHub Secrets 自动配置
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "sub-store-db"
