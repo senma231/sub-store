@@ -1,53 +1,8 @@
 import { Hono } from 'hono';
-import { Env } from '../index';
-
-// 简化的节点类型定义
-interface SimpleNode {
-  id: string;
-  name: string;
-  type: 'vless' | 'vmess' | 'trojan' | 'ss' | 'socks5' | 'hy2' | 'hy';
-  server: string;
-  port: number;
-  enabled: boolean;
-  remark?: string;
-  createdAt: string;
-  updatedAt: string;
-  // 协议特定字段
-  uuid?: string;
-  password?: string;
-  method?: string;
-  [key: string]: any;
-}
+import { Env, SimpleNode } from '../types';
+import { memoryNodes, addNode, updateNode, deleteNode } from '../data/memoryNodes';
 
 export const nodesRouter = new Hono<{ Bindings: Env }>();
-
-// 内存存储（演示用）
-let memoryNodes: SimpleNode[] = [
-  {
-    id: 'demo-vless-1',
-    name: '演示 VLESS 节点',
-    type: 'vless',
-    server: 'demo.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '12345678-1234-1234-1234-123456789abc',
-    remark: '这是一个演示节点',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'demo-vmess-1',
-    name: '演示 VMess 节点',
-    type: 'vmess',
-    server: 'demo2.example.com',
-    port: 443,
-    enabled: true,
-    uuid: '87654321-4321-4321-4321-cba987654321',
-    remark: '这是另一个演示节点',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-];
 
 // 获取所有节点
 nodesRouter.get('/', async (c) => {
@@ -179,7 +134,7 @@ nodesRouter.post('/', async (c) => {
     }
 
     // 添加新节点
-    memoryNodes.push(node);
+    addNode(node);
 
     return c.json({
       success: true,
@@ -213,14 +168,10 @@ nodesRouter.put('/:id', async (c) => {
     }
 
     // 更新节点
-    const updatedNode = {
-      ...memoryNodes[nodeIndex],
+    const updatedNode = updateNode(nodeId, {
       ...body,
-      id: nodeId, // 确保ID不被修改
       updatedAt: new Date().toISOString(),
-    };
-
-    memoryNodes[nodeIndex] = updatedNode;
+    });
 
     return c.json({
       success: true,
@@ -254,7 +205,7 @@ nodesRouter.delete('/:id', async (c) => {
     }
 
     // 删除节点
-    const deletedNode = memoryNodes.splice(nodeIndex, 1)[0];
+    const deletedNode = deleteNode(nodeId);
 
     return c.json({
       success: true,
@@ -304,21 +255,31 @@ nodesRouter.post('/batch', async (c) => {
 
         switch (action) {
           case 'enable':
-            memoryNodes[nodeIndex].enabled = true;
-            memoryNodes[nodeIndex].updatedAt = new Date().toISOString();
-            results.affectedNodes.push(memoryNodes[nodeIndex]);
-            results.success++;
+            const enabledNode = updateNode(nodeId, {
+              enabled: true,
+              updatedAt: new Date().toISOString()
+            });
+            if (enabledNode) {
+              results.affectedNodes.push(enabledNode);
+              results.success++;
+            }
             break;
           case 'disable':
-            memoryNodes[nodeIndex].enabled = false;
-            memoryNodes[nodeIndex].updatedAt = new Date().toISOString();
-            results.affectedNodes.push(memoryNodes[nodeIndex]);
-            results.success++;
+            const disabledNode = updateNode(nodeId, {
+              enabled: false,
+              updatedAt: new Date().toISOString()
+            });
+            if (disabledNode) {
+              results.affectedNodes.push(disabledNode);
+              results.success++;
+            }
             break;
           case 'delete':
-            const deletedNode = memoryNodes.splice(nodeIndex, 1)[0];
-            results.affectedNodes.push(deletedNode);
-            results.success++;
+            const deletedNode = deleteNode(nodeId);
+            if (deletedNode) {
+              results.affectedNodes.push(deletedNode);
+              results.success++;
+            }
             break;
           default:
             results.failed++;
@@ -466,7 +427,7 @@ nodesRouter.post('/import', async (c) => {
           continue;
         }
 
-        memoryNodes.push(node);
+        addNode(node);
         results.importedNodes.push(node);
         results.success++;
 

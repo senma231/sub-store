@@ -266,22 +266,8 @@ const NodesPage: React.FC = () => {
   // 创建自定义订阅
   const createCustomSubscriptionMutation = useMutation({
     mutationFn: async (data: CreateCustomSubscriptionRequest): Promise<CreateCustomSubscriptionResponse> => {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
-      const response = await fetch(`${apiBaseUrl}/api/subscriptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create custom subscription');
-      }
-
-      const result = await response.json();
-      return result.data;
+      const { customSubscriptionService } = await import('@/services/customSubscriptionService');
+      return customSubscriptionService.createCustomSubscription(data);
     },
     onSuccess: () => {
       message.success('自定义订阅创建成功');

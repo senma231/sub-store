@@ -114,12 +114,20 @@ export const CustomSubscriptionModal: React.FC<CustomSubscriptionModalProps> = (
           name="format"
           rules={[{ required: true, message: '请选择订阅格式' }]}
         >
-          <Select placeholder="请选择订阅格式">
+          <Select
+            placeholder="请选择订阅格式"
+            dropdownStyle={{ minWidth: 300 }}
+            optionLabelProp="label"
+          >
             {formatOptions.map(option => (
-              <Select.Option key={option.value} value={option.value}>
-                <div>
-                  <div>{option.label}</div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
+              <Select.Option
+                key={option.value}
+                value={option.value}
+                label={option.label}
+              >
+                <div style={{ padding: '4px 0' }}>
+                  <div style={{ fontWeight: 500 }}>{option.label}</div>
+                  <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.2 }}>
                     {option.description}
                   </Text>
                 </div>
