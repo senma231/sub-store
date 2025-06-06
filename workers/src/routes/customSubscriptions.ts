@@ -207,16 +207,9 @@ export const generateCustomSubscriptionContent = (
   switch (format) {
     case 'v2ray': {
       // 生成V2Ray Base64格式
-      const configs = nodes.map(node => {
-        if (node.type === 'vless') {
-          return `vless://${node.uuid}@${node.server}:${node.port}?type=tcp&security=tls#${encodeURIComponent(node.name)}`;
-        } else if (node.type === 'vmess') {
-          return `vmess://${node.uuid}@${node.server}:${node.port}?type=tcp&security=tls#${encodeURIComponent(node.name)}`;
-        }
-        return '';
-      }).filter(Boolean);
-      
-      const content = btoa(configs.join('\n'));
+      const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
+      const content = btoa(links.join('\n'));
+
       return {
         content,
         contentType: 'text/plain',
@@ -226,32 +219,8 @@ export const generateCustomSubscriptionContent = (
 
     case 'clash': {
       // 生成Clash YAML格式
-      const proxies = nodes.map(node => {
-        if (node.type === 'vless') {
-          return {
-            name: node.name,
-            type: 'vless',
-            server: node.server,
-            port: node.port,
-            uuid: node.uuid,
-            tls: true,
-            network: 'tcp'
-          };
-        } else if (node.type === 'vmess') {
-          return {
-            name: node.name,
-            type: 'vmess',
-            server: node.server,
-            port: node.port,
-            uuid: node.uuid,
-            alterId: 0,
-            cipher: 'auto',
-            tls: true,
-            network: 'tcp'
-          };
-        }
-        return null;
-      }).filter(Boolean);
+      const proxies = nodes.map(node => convertNodeToClashProxy(node)).filter(Boolean);
+      const proxyNames = proxies.map(proxy => proxy.name);
 
       const clashConfig = {
         port: 7890,
@@ -263,18 +232,23 @@ export const generateCustomSubscriptionContent = (
         proxies,
         'proxy-groups': [
           {
-            name: '自定义节点组',
+            name: '🚀 自定义节点组',
             type: 'select',
-            proxies: proxies.map(p => p.name)
+            proxies: ['DIRECT', ...proxyNames]
           }
         ],
         rules: [
-          'MATCH,自定义节点组'
+          'DOMAIN-SUFFIX,cn,DIRECT',
+          'GEOIP,CN,DIRECT',
+          'MATCH,🚀 自定义节点组'
         ]
       };
 
+      // 转换为YAML格式
+      const yamlContent = convertToYaml(clashConfig);
+
       return {
-        content: JSON.stringify(clashConfig, null, 2), // 简化为JSON，实际应该是YAML
+        content: yamlContent,
         contentType: 'application/yaml',
         filename: 'custom-clash.yaml'
       };
@@ -282,16 +256,9 @@ export const generateCustomSubscriptionContent = (
 
     case 'shadowrocket': {
       // 生成Shadowrocket格式
-      const configs = nodes.map(node => {
-        if (node.type === 'vless') {
-          return `vless://${node.uuid}@${node.server}:${node.port}?remarks=${encodeURIComponent(node.name)}&obfsParam=${node.server}&path=/&obfs=none&tls=1&peer=${node.server}&allowInsecure=0`;
-        } else if (node.type === 'vmess') {
-          return `vmess://${node.uuid}@${node.server}:${node.port}?remarks=${encodeURIComponent(node.name)}&obfsParam=${node.server}&path=/&obfs=none&tls=1&peer=${node.server}&allowInsecure=0`;
-        }
-        return '';
-      }).filter(Boolean);
+      const links = nodes.map(node => convertNodeToShadowrocketLink(node)).filter(Boolean);
+      const content = btoa(links.join('\n'));
 
-      const content = btoa(configs.join('\n'));
       return {
         content,
         contentType: 'text/plain',
@@ -307,3 +274,170 @@ export const generateCustomSubscriptionContent = (
       };
   }
 };
+
+// 将节点转换为V2Ray链接
+function convertNodeToV2rayLink(node: any): string {
+  switch (node.type) {
+    case 'vless':
+      return generateVlessLink(node);
+    case 'vmess':
+      return generateVmessLink(node);
+    case 'trojan':
+      return generateTrojanLink(node);
+    case 'ss':
+      return generateShadowsocksLink(node);
+    default:
+      console.warn(`Unsupported node type for V2Ray: ${node.type}`);
+      return '';
+  }
+}
+
+// 将节点转换为Clash代理配置
+function convertNodeToClashProxy(node: any): any {
+  const base = {
+    name: node.name,
+    server: node.server,
+    port: node.port,
+  };
+
+  switch (node.type) {
+    case 'vless':
+      return {
+        ...base,
+        type: 'vless',
+        uuid: node.uuid,
+        tls: node.tls || false,
+        network: node.network || 'tcp',
+        'skip-cert-verify': true,
+        ...(node.sni && { servername: node.sni }),
+        ...(node.wsPath && { 'ws-opts': { path: node.wsPath } }),
+      };
+    case 'vmess':
+      return {
+        ...base,
+        type: 'vmess',
+        uuid: node.uuid,
+        alterId: node.alterId || 0,
+        cipher: node.security || 'auto',
+        tls: node.tls || false,
+        network: node.network || 'tcp',
+        'skip-cert-verify': true,
+        ...(node.sni && { servername: node.sni }),
+        ...(node.wsPath && { 'ws-opts': { path: node.wsPath } }),
+      };
+    case 'trojan':
+      return {
+        ...base,
+        type: 'trojan',
+        password: node.password,
+        'skip-cert-verify': true,
+        ...(node.sni && { sni: node.sni }),
+      };
+    case 'ss':
+      return {
+        ...base,
+        type: 'ss',
+        cipher: node.method,
+        password: node.password,
+      };
+    default:
+      console.warn(`Unsupported node type for Clash: ${node.type}`);
+      return null;
+  }
+}
+
+// 将节点转换为Shadowrocket链接
+function convertNodeToShadowrocketLink(node: any): string {
+  return convertNodeToV2rayLink(node);
+}
+
+// 生成VLESS链接
+function generateVlessLink(node: any): string {
+  const params = new URLSearchParams();
+  params.set('type', node.network || 'tcp');
+  params.set('security', node.tls ? 'tls' : 'none');
+
+  if (node.sni) params.set('sni', node.sni);
+  if (node.wsPath) params.set('path', node.wsPath);
+  if (node.flow) params.set('flow', node.flow);
+
+  const paramString = params.toString();
+  const fragment = encodeURIComponent(node.name);
+
+  return `vless://${node.uuid}@${node.server}:${node.port}?${paramString}#${fragment}`;
+}
+
+// 生成VMess链接
+function generateVmessLink(node: any): string {
+  const vmessConfig = {
+    v: '2',
+    ps: node.name,
+    add: node.server,
+    port: node.port.toString(),
+    id: node.uuid,
+    aid: (node.alterId || 0).toString(),
+    scy: node.security || 'auto',
+    net: node.network || 'tcp',
+    type: 'none',
+    host: node.sni || '',
+    path: node.wsPath || '',
+    tls: node.tls ? 'tls' : '',
+    sni: node.sni || '',
+  };
+
+  return `vmess://${btoa(JSON.stringify(vmessConfig))}`;
+}
+
+// 生成Trojan链接
+function generateTrojanLink(node: any): string {
+  const params = new URLSearchParams();
+  params.set('type', node.network || 'tcp');
+
+  if (node.sni) params.set('sni', node.sni);
+  if (node.wsPath) params.set('path', node.wsPath);
+
+  const paramString = params.toString();
+  const fragment = encodeURIComponent(node.name);
+
+  return `trojan://${node.password}@${node.server}:${node.port}?${paramString}#${fragment}`;
+}
+
+// 生成Shadowsocks链接
+function generateShadowsocksLink(node: any): string {
+  const userInfo = btoa(`${node.method}:${node.password}`);
+  const fragment = encodeURIComponent(node.name);
+
+  return `ss://${userInfo}@${node.server}:${node.port}#${fragment}`;
+}
+
+// 简单的YAML转换函数
+function convertToYaml(obj: any, indent = 0): string {
+  const spaces = '  '.repeat(indent);
+  let yaml = '';
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      yaml += `${spaces}${key}:\n`;
+      for (const item of value) {
+        if (typeof item === 'object') {
+          yaml += `${spaces}  - `;
+          const itemYaml = convertToYaml(item, indent + 2);
+          yaml += itemYaml.substring(spaces.length + 4) + '\n';
+        } else {
+          yaml += `${spaces}  - ${item}\n`;
+        }
+      }
+    } else if (typeof value === 'object') {
+      yaml += `${spaces}${key}:\n`;
+      yaml += convertToYaml(value, indent + 1);
+    } else {
+      yaml += `${spaces}${key}: ${value}\n`;
+    }
+  }
+
+  return yaml;
+}

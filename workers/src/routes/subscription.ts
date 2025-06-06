@@ -33,66 +33,38 @@ const getMemoryNodes = async () => {
 
 // 获取订阅内容
 subscriptionRouter.get('/:format', async (c) => {
-  const format = c.req.param('format');
+  try {
+    const format = c.req.param('format');
 
-  // 验证格式
-  const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
-  if (!supportedFormats.includes(format)) {
-    return c.text(`Unsupported format: ${format}. Supported: ${supportedFormats.join(', ')}`, 400);
-  }
+    // 验证格式
+    const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
+    if (!supportedFormats.includes(format)) {
+      return c.text(`Unsupported format: ${format}. Supported: ${supportedFormats.join(', ')}`, 400);
+    }
 
-  // 简单的 V2Ray 测试
-  if (format === 'v2ray') {
-    return c.text('dmxlc3M6Ly8xMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODlhYmNAZGVtby5leGFtcGxlLmNvbTo0NDM/dHlwZT10Y3Amc2VjdXJpdHk9dGxzIyVFNiVCQyU5NCVFNyVBNCVCQSUyMFZMRVNTJTIwJUU4JThBJTgyJUU3JTgyJUI5', 200, {
-      'Content-Type': 'text/plain',
-      'Content-Disposition': 'attachment; filename="sub-store-v2ray.txt"',
-      'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
+    // 获取所有启用的节点
+    const memoryNodes = await getMemoryNodes();
+    const enabledNodes = memoryNodes.filter(node => node.enabled);
+
+    if (enabledNodes.length === 0) {
+      return c.text('No enabled nodes found', 404);
+    }
+
+    // 生成订阅内容
+    const { content, contentType, filename } = generateSubscriptionContent(enabledNodes, format);
+
+    return c.text(content, 200, {
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=0`,
+      'Profile-Title': 'Sub-Store Subscription',
+      'Profile-Update-Interval': '24',
     });
+
+  } catch (error) {
+    console.error('Subscription generation error:', error);
+    return c.text('Internal server error', 500);
   }
-
-  // 简化的响应
-  if (format === 'clash') {
-    const clashConfig = {
-      port: 7890,
-      'socks-port': 7891,
-      'allow-lan': false,
-      mode: 'rule',
-      'log-level': 'info',
-      proxies: [
-        {
-          name: '演示 VLESS 节点',
-          type: 'vless',
-          server: 'demo.example.com',
-          port: 443,
-          uuid: '12345678-1234-1234-1234-123456789abc',
-          tls: true,
-          network: 'tcp'
-        }
-      ],
-      'proxy-groups': [
-        {
-          name: 'Proxy',
-          type: 'select',
-          proxies: ['DIRECT', '演示 VLESS 节点']
-        }
-      ],
-      rules: ['MATCH,Proxy']
-    };
-
-    return c.text(JSON.stringify(clashConfig, null, 2), 200, {
-      'Content-Type': 'application/yaml',
-      'Content-Disposition': 'attachment; filename="sub-store-clash.yaml"',
-      'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
-    });
-  }
-
-  // 其他格式返回简单文本
-  return c.text(`Sub-Store ${format} subscription\nNodes: 2\nGenerated: ${new Date().toISOString()}`, 200, {
-    'Content-Type': 'text/plain',
-    'Content-Disposition': `attachment; filename="sub-store-${format}.txt"`,
-    'Subscription-Userinfo': 'upload=0; download=0; total=2; expire=0',
-  });
-    
 });
 
 // 获取订阅信息
@@ -238,3 +210,261 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     return c.text('Internal server error', 500);
   }
 });
+
+// 生成标准订阅内容的函数
+function generateSubscriptionContent(
+  nodes: SimpleNode[],
+  format: string
+): { content: string; contentType: string; filename: string } {
+  switch (format) {
+    case 'v2ray':
+      return generateV2raySubscription(nodes);
+    case 'clash':
+      return generateClashSubscription(nodes);
+    case 'shadowrocket':
+      return generateShadowrocketSubscription(nodes);
+    default:
+      throw new Error(`Unsupported format: ${format}`);
+  }
+}
+
+// 生成V2Ray订阅内容
+function generateV2raySubscription(nodes: SimpleNode[]): { content: string; contentType: string; filename: string } {
+  const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
+  const content = btoa(links.join('\n'));
+
+  return {
+    content,
+    contentType: 'text/plain',
+    filename: 'sub-store-v2ray.txt'
+  };
+}
+
+// 生成Clash订阅内容
+function generateClashSubscription(nodes: SimpleNode[]): { content: string; contentType: string; filename: string } {
+  const proxies = nodes.map(node => convertNodeToClashProxy(node)).filter(Boolean);
+  const proxyNames = proxies.map(proxy => proxy.name);
+
+  const clashConfig = {
+    port: 7890,
+    'socks-port': 7891,
+    'allow-lan': false,
+    mode: 'rule',
+    'log-level': 'info',
+    'external-controller': '127.0.0.1:9090',
+    proxies,
+    'proxy-groups': [
+      {
+        name: '🚀 节点选择',
+        type: 'select',
+        proxies: ['DIRECT', ...proxyNames]
+      },
+      {
+        name: '🎯 全球直连',
+        type: 'select',
+        proxies: ['DIRECT', '🚀 节点选择']
+      },
+      {
+        name: '🛑 广告拦截',
+        type: 'select',
+        proxies: ['REJECT', 'DIRECT']
+      }
+    ],
+    rules: [
+      'DOMAIN-SUFFIX,cn,🎯 全球直连',
+      'GEOIP,CN,🎯 全球直连',
+      'MATCH,🚀 节点选择'
+    ]
+  };
+
+  // 转换为YAML格式
+  const yamlContent = convertToYaml(clashConfig);
+
+  return {
+    content: yamlContent,
+    contentType: 'application/yaml',
+    filename: 'sub-store-clash.yaml'
+  };
+}
+
+// 生成Shadowrocket订阅内容
+function generateShadowrocketSubscription(nodes: SimpleNode[]): { content: string; contentType: string; filename: string } {
+  const links = nodes.map(node => convertNodeToShadowrocketLink(node)).filter(Boolean);
+  const content = btoa(links.join('\n'));
+
+  return {
+    content,
+    contentType: 'text/plain',
+    filename: 'sub-store-shadowrocket.txt'
+  };
+}
+
+// 将节点转换为V2Ray链接
+function convertNodeToV2rayLink(node: SimpleNode): string {
+  switch (node.type) {
+    case 'vless':
+      return generateVlessLink(node);
+    case 'vmess':
+      return generateVmessLink(node);
+    case 'trojan':
+      return generateTrojanLink(node);
+    case 'ss':
+      return generateShadowsocksLink(node);
+    default:
+      console.warn(`Unsupported node type for V2Ray: ${node.type}`);
+      return '';
+  }
+}
+
+// 将节点转换为Clash代理配置
+function convertNodeToClashProxy(node: SimpleNode): any {
+  const base = {
+    name: node.name,
+    server: node.server,
+    port: node.port,
+  };
+
+  switch (node.type) {
+    case 'vless':
+      return {
+        ...base,
+        type: 'vless',
+        uuid: node.uuid,
+        tls: node.tls || false,
+        network: node.network || 'tcp',
+        'skip-cert-verify': true,
+        ...(node.sni && { servername: node.sni }),
+        ...(node.wsPath && { 'ws-opts': { path: node.wsPath } }),
+      };
+    case 'vmess':
+      return {
+        ...base,
+        type: 'vmess',
+        uuid: node.uuid,
+        alterId: node.alterId || 0,
+        cipher: node.security || 'auto',
+        tls: node.tls || false,
+        network: node.network || 'tcp',
+        'skip-cert-verify': true,
+        ...(node.sni && { servername: node.sni }),
+        ...(node.wsPath && { 'ws-opts': { path: node.wsPath } }),
+      };
+    case 'trojan':
+      return {
+        ...base,
+        type: 'trojan',
+        password: node.password,
+        'skip-cert-verify': true,
+        ...(node.sni && { sni: node.sni }),
+      };
+    case 'ss':
+      return {
+        ...base,
+        type: 'ss',
+        cipher: node.method,
+        password: node.password,
+      };
+    default:
+      console.warn(`Unsupported node type for Clash: ${node.type}`);
+      return null;
+  }
+}
+
+// 将节点转换为Shadowrocket链接
+function convertNodeToShadowrocketLink(node: SimpleNode): string {
+  // Shadowrocket支持多种格式，这里使用与V2Ray相同的格式
+  return convertNodeToV2rayLink(node);
+}
+
+// 生成VLESS链接
+function generateVlessLink(node: SimpleNode): string {
+  const params = new URLSearchParams();
+  params.set('type', node.network || 'tcp');
+  params.set('security', node.tls ? 'tls' : 'none');
+
+  if (node.sni) params.set('sni', node.sni);
+  if (node.wsPath) params.set('path', node.wsPath);
+  if (node.flow) params.set('flow', node.flow);
+
+  const paramString = params.toString();
+  const fragment = encodeURIComponent(node.name);
+
+  return `vless://${node.uuid}@${node.server}:${node.port}?${paramString}#${fragment}`;
+}
+
+// 生成VMess链接
+function generateVmessLink(node: SimpleNode): string {
+  const vmessConfig = {
+    v: '2',
+    ps: node.name,
+    add: node.server,
+    port: node.port.toString(),
+    id: node.uuid,
+    aid: (node.alterId || 0).toString(),
+    scy: node.security || 'auto',
+    net: node.network || 'tcp',
+    type: 'none',
+    host: node.sni || '',
+    path: node.wsPath || '',
+    tls: node.tls ? 'tls' : '',
+    sni: node.sni || '',
+  };
+
+  return `vmess://${btoa(JSON.stringify(vmessConfig))}`;
+}
+
+// 生成Trojan链接
+function generateTrojanLink(node: SimpleNode): string {
+  const params = new URLSearchParams();
+  params.set('type', node.network || 'tcp');
+
+  if (node.sni) params.set('sni', node.sni);
+  if (node.wsPath) params.set('path', node.wsPath);
+
+  const paramString = params.toString();
+  const fragment = encodeURIComponent(node.name);
+
+  return `trojan://${node.password}@${node.server}:${node.port}?${paramString}#${fragment}`;
+}
+
+// 生成Shadowsocks链接
+function generateShadowsocksLink(node: SimpleNode): string {
+  const userInfo = btoa(`${node.method}:${node.password}`);
+  const fragment = encodeURIComponent(node.name);
+
+  return `ss://${userInfo}@${node.server}:${node.port}#${fragment}`;
+}
+
+// 简单的YAML转换函数
+function convertToYaml(obj: any, indent = 0): string {
+  const spaces = '  '.repeat(indent);
+  let yaml = '';
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      yaml += `${spaces}${key}:\n`;
+      for (const item of value) {
+        if (typeof item === 'object') {
+          yaml += `${spaces}  - `;
+          const itemYaml = convertToYaml(item, indent + 2);
+          yaml += itemYaml.substring(spaces.length + 4) + '\n';
+        } else {
+          yaml += `${spaces}  - ${item}\n`;
+        }
+      }
+    } else if (typeof value === 'object') {
+      yaml += `${spaces}${key}:\n`;
+      yaml += convertToYaml(value, indent + 1);
+    } else {
+      yaml += `${spaces}${key}: ${value}\n`;
+    }
+  }
+
+  return yaml;
+}
+
+export { subscriptionRouter };
