@@ -259,7 +259,14 @@ subscriptionRouter.get('/encoded/:data', async (c) => {
     // 解码订阅数据
     let subscriptionData;
     try {
-      const decodedString = atob(encodedData);
+      // 安全的Base64解码处理Unicode字符
+      const decodedBytes = atob(encodedData);
+      const bytes = new Uint8Array(decodedBytes.length);
+      for (let i = 0; i < decodedBytes.length; i++) {
+        bytes[i] = decodedBytes.charCodeAt(i);
+      }
+      const decoder = new TextDecoder();
+      const decodedString = decoder.decode(bytes);
       subscriptionData = JSON.parse(decodedString);
       console.log('Decoded subscription data:', subscriptionData.name);
     } catch (decodeError) {

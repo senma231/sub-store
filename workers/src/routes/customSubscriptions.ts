@@ -84,12 +84,18 @@ customSubscriptionsRouter.post('/', async (c) => {
     const subscriptionUrl = `${baseUrl}/sub/custom/${uuid}`;
 
     // 创建备用的编码URL，包含订阅数据
-    const encodedData = btoa(JSON.stringify({
+    // 使用安全的Base64编码处理Unicode字符
+    const subscriptionDataString = JSON.stringify({
       name: subscription.name,
       nodeIds: subscription.nodeIds,
       format: subscription.format,
       expiresAt: subscription.expiresAt,
-    }));
+    });
+
+    // 将字符串转换为UTF-8字节，然后进行Base64编码
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(subscriptionDataString);
+    const encodedData = btoa(String.fromCharCode(...bytes));
     const encodedUrl = `${baseUrl}/sub/encoded/${encodedData}`;
 
     return c.json({
