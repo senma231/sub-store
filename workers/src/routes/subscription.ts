@@ -169,8 +169,32 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     const uuid = c.req.param('uuid');
     console.log('Accessing custom subscription with UUID:', uuid);
 
-    const subscription = getCustomSubscription(uuid);
-    console.log('Found subscription:', subscription ? 'YES' : 'NO');
+    // 首先尝试从内存获取
+    let subscription = getCustomSubscription(uuid);
+    console.log('Found subscription in memory:', subscription ? 'YES' : 'NO');
+
+    // 如果内存中没有，尝试从自定义订阅API获取
+    if (!subscription) {
+      try {
+        console.log('Trying to fetch subscription from API...');
+        const apiUrl = new URL(c.req.url);
+        const apiResponse = await fetch(`${apiUrl.origin}/api/subscriptions/${uuid}`, {
+          headers: {
+            'Authorization': c.req.header('Authorization') || '',
+          }
+        });
+
+        if (apiResponse.ok) {
+          const apiResult = await apiResponse.json();
+          if (apiResult.success && apiResult.data.subscription) {
+            subscription = apiResult.data.subscription;
+            console.log('Found subscription via API:', 'YES');
+          }
+        }
+      } catch (apiError) {
+        console.log('API fetch failed:', apiError);
+      }
+    }
 
     if (!subscription) {
       // 添加调试信息
