@@ -62,6 +62,87 @@ nodesRouter.get('/', async (c) => {
   }
 });
 
+// 导出节点 (必须在 /:id 路由之前定义)
+nodesRouter.get('/export', async (c) => {
+  try {
+    console.log('Export request received');
+    const format = c.req.query('format') || 'json';
+    const nodeIds = c.req.query('nodeIds')?.split(',');
+
+    console.log('Export format:', format);
+    console.log('Node IDs:', nodeIds);
+
+    // 获取要导出的节点
+    let nodesToExport = memoryNodes;
+    if (nodeIds && nodeIds.length > 0) {
+      nodesToExport = memoryNodes.filter(node => nodeIds.includes(node.id));
+    }
+
+    console.log('Nodes to export:', nodesToExport.length);
+
+    if (format === 'json') {
+      // JSON 格式导出
+      const exportData = {
+        version: '1.0',
+        exportTime: new Date().toISOString(),
+        totalNodes: nodesToExport.length,
+        nodes: nodesToExport,
+      };
+
+      return new Response(JSON.stringify(exportData, null, 2), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Disposition': 'attachment; filename="nodes.json"',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    } else if (format === 'csv') {
+      // CSV 格式导出
+      const csvHeaders = ['id', 'name', 'type', 'server', 'port', 'enabled', 'uuid', 'password', 'remark', 'createdAt'];
+      const csvRows = [csvHeaders.join(',')];
+
+      nodesToExport.forEach(node => {
+        const row = csvHeaders.map(header => {
+          const value = (node as any)[header] || '';
+          // 处理包含逗号的值
+          return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+        });
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+
+      return new Response(csvContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="nodes.csv"',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    } else {
+      return c.json({
+        success: false,
+        error: 'Invalid format',
+        message: 'Supported formats: json, csv',
+      }, 400);
+    }
+
+  } catch (error) {
+    console.error('Failed to export nodes:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to export nodes',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }, 500);
+  }
+});
+
 // 获取单个节点
 nodesRouter.get('/:id', async (c) => {
   try {
@@ -313,86 +394,7 @@ nodesRouter.post('/batch', async (c) => {
   }
 });
 
-// 导出节点
-nodesRouter.get('/export', async (c) => {
-  try {
-    console.log('Export request received');
-    const format = c.req.query('format') || 'json';
-    const nodeIds = c.req.query('nodeIds')?.split(',');
 
-    console.log('Export format:', format);
-    console.log('Node IDs:', nodeIds);
-
-    // 获取要导出的节点
-    let nodesToExport = memoryNodes;
-    if (nodeIds && nodeIds.length > 0) {
-      nodesToExport = memoryNodes.filter(node => nodeIds.includes(node.id));
-    }
-
-    console.log('Nodes to export:', nodesToExport.length);
-
-    if (format === 'json') {
-      // JSON 格式导出
-      const exportData = {
-        version: '1.0',
-        exportTime: new Date().toISOString(),
-        totalNodes: nodesToExport.length,
-        nodes: nodesToExport,
-      };
-
-      return new Response(JSON.stringify(exportData, null, 2), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Disposition': 'attachment; filename="nodes.json"',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
-      });
-    } else if (format === 'csv') {
-      // CSV 格式导出
-      const csvHeaders = ['id', 'name', 'type', 'server', 'port', 'enabled', 'uuid', 'password', 'remark', 'createdAt'];
-      const csvRows = [csvHeaders.join(',')];
-
-      nodesToExport.forEach(node => {
-        const row = csvHeaders.map(header => {
-          const value = (node as any)[header] || '';
-          // 处理包含逗号的值
-          return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
-        });
-        csvRows.push(row.join(','));
-      });
-
-      const csvContent = csvRows.join('\n');
-
-      return new Response(csvContent, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': 'attachment; filename="nodes.csv"',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: 'Invalid format',
-        message: 'Supported formats: json, csv',
-      }, 400);
-    }
-
-  } catch (error) {
-    console.error('Failed to export nodes:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to export nodes',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    }, 500);
-  }
-});
 
 // 导入节点
 nodesRouter.post('/import', async (c) => {
