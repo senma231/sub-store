@@ -79,15 +79,25 @@ customSubscriptionsRouter.post('/', async (c) => {
     // 存储订阅
     setCustomSubscription(uuid, subscription);
 
-    // 生成订阅URL
+    // 生成订阅URL（包含备用的编码URL）
     const baseUrl = new URL(c.req.url).origin;
     const subscriptionUrl = `${baseUrl}/sub/custom/${uuid}`;
+
+    // 创建备用的编码URL，包含订阅数据
+    const encodedData = btoa(JSON.stringify({
+      name: subscription.name,
+      nodeIds: subscription.nodeIds,
+      format: subscription.format,
+      expiresAt: subscription.expiresAt,
+    }));
+    const encodedUrl = `${baseUrl}/sub/encoded/${encodedData}`;
 
     return c.json({
       success: true,
       data: {
         subscription,
         url: subscriptionUrl,
+        encodedUrl, // 备用URL，包含完整数据
       },
       message: 'Custom subscription created successfully',
     }, 201);

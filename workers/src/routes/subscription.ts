@@ -178,17 +178,25 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
       try {
         console.log('Trying to fetch subscription from API...');
         const apiUrl = new URL(c.req.url);
-        const apiResponse = await fetch(`${apiUrl.origin}/api/subscriptions/${uuid}`, {
-          headers: {
-            'Authorization': c.req.header('Authorization') || '',
-          }
-        });
 
-        if (apiResponse.ok) {
-          const apiResult = await apiResponse.json();
-          if (apiResult.success && apiResult.data.subscription) {
-            subscription = apiResult.data.subscription;
-            console.log('Found subscription via API:', 'YES');
+        // 尝试多种认证方式
+        const authHeaders = [
+          c.req.header('Authorization'),
+          `Admin ${c.env.ADMIN_TOKEN}`,
+        ].filter(Boolean);
+
+        for (const authHeader of authHeaders) {
+          const apiResponse = await fetch(`${apiUrl.origin}/api/subscriptions/${uuid}`, {
+            headers: { 'Authorization': authHeader }
+          });
+
+          if (apiResponse.ok) {
+            const apiResult = await apiResponse.json();
+            if (apiResult.success && apiResult.data.subscription) {
+              subscription = apiResult.data.subscription;
+              console.log('Found subscription via API with auth:', authHeader.substring(0, 20) + '...');
+              break;
+            }
           }
         }
       } catch (apiError) {
@@ -238,6 +246,63 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
 
   } catch (error) {
     console.error('Custom subscription error:', error);
+    return c.text('Internal server error', 500);
+  }
+});
+
+// 获取编码的自定义订阅内容（无需持久化存储）
+subscriptionRouter.get('/encoded/:data', async (c) => {
+  try {
+    const encodedData = c.req.param('data');
+    console.log('Accessing encoded subscription with data length:', encodedData.length);
+
+    // 解码订阅数据
+    let subscriptionData;
+    try {
+      const decodedString = atob(encodedData);
+      subscriptionData = JSON.parse(decodedString);
+      console.log('Decoded subscription data:', subscriptionData.name);
+    } catch (decodeError) {
+      console.error('Failed to decode subscription data:', decodeError);
+      return c.text('Invalid subscription data', 400);
+    }
+
+    // 验证数据格式
+    if (!subscriptionData.name || !subscriptionData.nodeIds || !subscriptionData.format) {
+      return c.text('Invalid subscription format', 400);
+    }
+
+    // 检查是否过期
+    if (subscriptionData.expiresAt && new Date(subscriptionData.expiresAt) < new Date()) {
+      return c.text('Subscription expired', 410);
+    }
+
+    // 获取关联的节点
+    const { memoryNodes } = await import('../data/memoryNodes');
+    const selectedNodes = memoryNodes.filter(node =>
+      subscriptionData.nodeIds.includes(node.id) && node.enabled
+    );
+
+    if (selectedNodes.length === 0) {
+      return c.text('No valid nodes found', 404);
+    }
+
+    // 生成订阅内容
+    const { content, contentType, filename } = generateCustomSubscriptionContent(
+      selectedNodes,
+      subscriptionData.format
+    );
+
+    return c.text(content, 200, {
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Subscription-Userinfo': `upload=0; download=0; total=${selectedNodes.length}; expire=${subscriptionData.expiresAt ? Math.floor(new Date(subscriptionData.expiresAt).getTime() / 1000) : 0}`,
+      'Profile-Title': subscriptionData.name,
+      'Profile-Update-Interval': '24',
+    });
+
+  } catch (error) {
+    console.error('Encoded subscription error:', error);
     return c.text('Internal server error', 500);
   }
 });
