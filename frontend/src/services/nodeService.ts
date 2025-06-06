@@ -45,7 +45,12 @@ export const nodeService = {
 
   // 导出节点
   exportNodes: async (format: 'json' | 'csv' = 'json'): Promise<void> => {
-    return apiClient.download(`/api/nodes/export?format=${format}`, `nodes.${format}`);
+    try {
+      return await apiClient.download(`/api/nodes/export?format=${format}`, `nodes.${format}`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      throw error;
+    }
   },
 
   // 测试节点连接

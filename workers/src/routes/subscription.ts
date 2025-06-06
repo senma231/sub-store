@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../index';
 import { generateCustomSubscriptionContent } from './customSubscriptions';
+import { getCustomSubscription, updateSubscriptionAccess } from '../data/customSubscriptions';
 
 // 简化的节点类型
 interface SimpleNode {
@@ -190,25 +191,11 @@ subscriptionRouter.get('/', async (c) => {
   });
 });
 
-// 自定义订阅内容获取（需要与customSubscriptions.ts中的存储保持一致）
-const customSubscriptions = new Map<string, {
-  id: string;
-  uuid: string;
-  name: string;
-  nodeIds: string[];
-  format: string;
-  expiresAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  accessCount: number;
-  lastAccessAt?: string;
-}>();
-
 // 获取自定义订阅内容
 subscriptionRouter.get('/custom/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
-    const subscription = customSubscriptions.get(uuid);
+    const subscription = getCustomSubscription(uuid);
 
     if (!subscription) {
       return c.text('Custom subscription not found', 404);
@@ -230,9 +217,7 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     }
 
     // 更新访问统计
-    subscription.accessCount++;
-    subscription.lastAccessAt = new Date().toISOString();
-    customSubscriptions.set(uuid, subscription);
+    updateSubscriptionAccess(uuid);
 
     // 生成订阅内容
     const { content, contentType, filename } = generateCustomSubscriptionContent(

@@ -394,7 +394,15 @@ const NodesPage: React.FC = () => {
             </Button>
             <Button
               icon={<ExportOutlined />}
-              onClick={() => nodeService.exportNodes()}
+              onClick={async () => {
+                try {
+                  await nodeService.exportNodes();
+                  message.success('导出成功');
+                } catch (error) {
+                  console.error('Export error:', error);
+                  message.error('导出失败，请检查网络连接');
+                }
+              }}
             >
               导出
             </Button>

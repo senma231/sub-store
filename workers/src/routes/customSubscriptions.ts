@@ -1,21 +1,15 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
+import {
+  customSubscriptions,
+  setCustomSubscription,
+  getCustomSubscription,
+  deleteCustomSubscription,
+  getAllCustomSubscriptions,
+  type CustomSubscriptionData
+} from '../data/customSubscriptions';
 
 export const customSubscriptionsRouter = new Hono<{ Bindings: Env }>();
-
-// 内存存储自定义订阅（生产环境应使用数据库）
-const customSubscriptions = new Map<string, {
-  id: string;
-  uuid: string;
-  name: string;
-  nodeIds: string[];
-  format: string;
-  expiresAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  accessCount: number;
-  lastAccessAt?: string;
-}>();
 
 // 获取实际的内存节点数据
 const getMemoryNodes = async () => {
@@ -83,7 +77,7 @@ customSubscriptionsRouter.post('/', async (c) => {
     };
 
     // 存储订阅
-    customSubscriptions.set(uuid, subscription);
+    setCustomSubscription(uuid, subscription);
 
     // 生成订阅URL
     const baseUrl = new URL(c.req.url).origin;
@@ -111,7 +105,7 @@ customSubscriptionsRouter.post('/', async (c) => {
 // 获取自定义订阅列表
 customSubscriptionsRouter.get('/', async (c) => {
   try {
-    const subscriptions = Array.from(customSubscriptions.values())
+    const subscriptions = getAllCustomSubscriptions()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return c.json({
@@ -136,7 +130,7 @@ customSubscriptionsRouter.get('/', async (c) => {
 customSubscriptionsRouter.get('/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
-    const subscription = customSubscriptions.get(uuid);
+    const subscription = getCustomSubscription(uuid);
 
     if (!subscription) {
       return c.json({
@@ -176,7 +170,7 @@ customSubscriptionsRouter.get('/:uuid', async (c) => {
 customSubscriptionsRouter.delete('/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
-    const subscription = customSubscriptions.get(uuid);
+    const subscription = getCustomSubscription(uuid);
 
     if (!subscription) {
       return c.json({
@@ -186,7 +180,7 @@ customSubscriptionsRouter.delete('/:uuid', async (c) => {
       }, 404);
     }
 
-    customSubscriptions.delete(uuid);
+    deleteCustomSubscription(uuid);
 
     return c.json({
       success: true,
