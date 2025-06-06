@@ -466,5 +466,3 @@ function convertToYaml(obj: any, indent = 0): string {
 
   return yaml;
 }
-
-export { subscriptionRouter };
