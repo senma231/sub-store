@@ -1,32 +1,36 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  Row, 
-  Col, 
-  Typography, 
-  Button, 
-  Space, 
-  Input, 
-  Tag, 
+import {
+  Card,
+  Row,
+  Col,
+  Typography,
+  Button,
+  Space,
+  Input,
+  Tag,
   Tooltip,
   message,
   Modal,
   Form,
   Select,
   Switch,
-  Divider
+  Divider,
+  Tabs
 } from 'antd';
 import {
   CopyOutlined,
   DownloadOutlined,
   EyeOutlined,
   SettingOutlined,
-  QrcodeOutlined
+  QrcodeOutlined,
+  LinkOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode.react';
 import copy from 'copy-to-clipboard';
 import { subscriptionService } from '../services/subscriptionService';
+import { CustomSubscriptionManager } from '../components/CustomSubscriptionManager';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -44,6 +48,7 @@ interface SubscriptionOptions {
 }
 
 const SubscriptionsPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>('standard');
   const [selectedFormat, setSelectedFormat] = useState<string>('v2ray');
   const [options, setOptions] = useState<SubscriptionOptions>({});
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -115,7 +120,20 @@ const SubscriptionsPage: React.FC = () => {
         <Text type="secondary">生成和管理代理订阅链接</Text>
       </div>
 
-      <Row gutter={[16, 16]}>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            key: 'standard',
+            label: (
+              <span>
+                <AppstoreOutlined />
+                标准订阅
+              </span>
+            ),
+            children: (
+              <Row gutter={[16, 16]}>
         {/* 格式选择 */}
         <Col span={24}>
           <Card title="选择订阅格式">
@@ -272,7 +290,23 @@ const SubscriptionsPage: React.FC = () => {
             )}
           </Card>
         </Col>
-      </Row>
+              </Row>
+            ),
+          },
+          {
+            key: 'custom',
+            label: (
+              <span>
+                <LinkOutlined />
+                自定义订阅
+              </span>
+            ),
+            children: (
+              <CustomSubscriptionManager />
+            ),
+          },
+        ]}
+      />
 
       {/* 高级选项模态框 */}
       <Modal

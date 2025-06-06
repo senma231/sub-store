@@ -25,6 +25,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nodeService } from '../services/nodeService';
 import { NodeModal } from '../components/NodeModal';
+import { NodeImportModal } from '../components/NodeImportModal';
 import { CustomSubscriptionModal } from '../components/CustomSubscriptionModal';
 import type { ProxyNode, CreateCustomSubscriptionRequest, CreateCustomSubscriptionResponse } from '@/types';
 
@@ -39,6 +40,7 @@ const NodesPage: React.FC = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNode, setEditingNode] = useState<ProxyNode | null>(null);
+  const [importModalVisible, setImportModalVisible] = useState(false);
   const [customSubModalVisible, setCustomSubModalVisible] = useState(false);
 
   const queryClient = useQueryClient();
@@ -67,6 +69,7 @@ const NodesPage: React.FC = () => {
     onSuccess: () => {
       message.success('节点创建成功');
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] }); // 刷新统计数据
       setModalVisible(false);
       setEditingNode(null);
     },
@@ -82,6 +85,7 @@ const NodesPage: React.FC = () => {
     onSuccess: () => {
       message.success('节点更新成功');
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] }); // 刷新统计数据
       setModalVisible(false);
       setEditingNode(null);
     },
@@ -96,6 +100,7 @@ const NodesPage: React.FC = () => {
     onSuccess: () => {
       message.success('节点删除成功');
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] }); // 刷新统计数据
     },
     onError: (error: any) => {
       message.error(error.response?.data?.message || '删除失败');
@@ -108,10 +113,28 @@ const NodesPage: React.FC = () => {
     onSuccess: (data) => {
       message.success(`批量操作成功，影响 ${data.affectedCount} 个节点`);
       queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] }); // 刷新统计数据
       setSelectedRowKeys([]);
     },
     onError: (error: any) => {
       message.error(error.response?.data?.message || '批量操作失败');
+    },
+  });
+
+  // 导入节点
+  const importMutation = useMutation({
+    mutationFn: nodeService.importNodes,
+    onSuccess: (data) => {
+      message.success(`导入成功：${data.success} 个节点，失败 ${data.failed} 个`);
+      if (data.errors && data.errors.length > 0) {
+        console.warn('导入错误:', data.errors);
+      }
+      queryClient.invalidateQueries({ queryKey: ['nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] }); // 刷新统计数据
+      setImportModalVisible(false);
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.message || '导入失败');
     },
   });
 
@@ -277,6 +300,21 @@ const NodesPage: React.FC = () => {
     setCustomSubModalVisible(true);
   };
 
+  // 处理节点导入
+  const handleImportNodes = async (nodes: Partial<ProxyNode>[]) => {
+    // 过滤并转换为完整的节点数据
+    const validNodes = nodes.filter(node =>
+      node.name && node.type && node.server && node.port
+    ) as ProxyNode[];
+
+    if (validNodes.length === 0) {
+      message.warning('没有有效的节点数据');
+      return;
+    }
+
+    await importMutation.mutateAsync(validNodes);
+  };
+
   // 处理状态切换
   const handleToggleStatus = (node: ProxyNode) => {
     batchMutation.mutate({
@@ -364,7 +402,7 @@ const NodesPage: React.FC = () => {
             </Button>
             <Button
               icon={<ImportOutlined />}
-              onClick={() => {/* TODO: 导入节点 */}}
+              onClick={() => setImportModalVisible(true)}
             >
               导入
             </Button>
@@ -464,6 +502,14 @@ const NodesPage: React.FC = () => {
         initialValues={editingNode || undefined}
         loading={createMutation.isPending || updateMutation.isPending}
         title={editingNode ? '编辑节点' : '添加节点'}
+      />
+
+      {/* 节点导入模态框 */}
+      <NodeImportModal
+        open={importModalVisible}
+        onCancel={() => setImportModalVisible(false)}
+        onImport={handleImportNodes}
+        loading={importMutation.isPending}
       />
 
       {/* 自定义订阅模态框 */}
