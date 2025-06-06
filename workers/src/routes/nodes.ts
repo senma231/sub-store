@@ -1,8 +1,13 @@
 import { Hono } from 'hono';
 import { Env, SimpleNode } from '../types';
-import { memoryNodes, addNode, updateNode, deleteNode } from '../data/memoryNodes';
+import { authMiddleware } from '../middleware/auth';
+import { NodesRepository } from '../database/nodes';
+import { Database } from '../database';
 
 export const nodesRouter = new Hono<{ Bindings: Env }>();
+
+// 应用认证中间件到所有路由
+nodesRouter.use('*', authMiddleware);
 
 // 获取所有节点
 nodesRouter.get('/', async (c) => {
@@ -13,43 +18,49 @@ nodesRouter.get('/', async (c) => {
     const type = c.req.query('type') || '';
     const enabled = c.req.query('enabled');
 
-    // 使用内存存储
-    let nodes: SimpleNode[] = [...memoryNodes];
-    
-    // 过滤节点
+    // 使用数据库存储
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+
+    // 构建查询条件
+    const filters: any = {};
     if (search) {
-      const searchLower = search.toLowerCase();
-      nodes = nodes.filter(node => 
-        node.name.toLowerCase().includes(searchLower) ||
-        node.server.toLowerCase().includes(searchLower) ||
-        (node.remark && node.remark.toLowerCase().includes(searchLower))
-      );
+      filters.search = search;
     }
-    
     if (type) {
-      nodes = nodes.filter(node => node.type === type);
+      filters.type = type;
     }
-    
     if (enabled !== undefined) {
-      const isEnabled = enabled === 'true';
-      nodes = nodes.filter(node => node.enabled === isEnabled);
+      filters.enabled = enabled === 'true';
     }
-    
-    // 分页
-    const total = nodes.length;
+
+    // 从数据库获取节点
+    const result = await nodesRepo.getNodes(page, limit, filters);
+
+    if (!result.success) {
+      console.error('Failed to get nodes from database:', result.error);
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    const nodes = result.data || [];
+    const total = result.total || 0;
     const totalPages = Math.ceil(total / limit);
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedNodes = nodes.slice(startIndex, endIndex);
-    
+
     return c.json({
       success: true,
       data: {
-        items: paginatedNodes,
-        total,
-        page,
-        limit,
-        totalPages,
+        items: nodes,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
       },
     });
   } catch (error) {
@@ -73,9 +84,21 @@ nodesRouter.get('/export', async (c) => {
     console.log('Node IDs:', nodeIds);
 
     // 获取要导出的节点
-    let nodesToExport = memoryNodes;
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+
+    let nodesToExport: any[] = [];
     if (nodeIds && nodeIds.length > 0) {
-      nodesToExport = memoryNodes.filter(node => nodeIds.includes(node.id));
+      // 获取指定的节点
+      for (const nodeId of nodeIds) {
+        const result = await nodesRepo.getNodeById(nodeId);
+        if (result.success && result.data) {
+          nodesToExport.push(result.data);
+        }
+      }
+    } else {
+      // 获取所有节点
+      const result = await nodesRepo.getNodes(1, 1000); // 获取前1000个节点
+      nodesToExport = result.data || [];
     }
 
     console.log('Nodes to export:', nodesToExport.length);
@@ -147,10 +170,19 @@ nodesRouter.get('/export', async (c) => {
 nodesRouter.get('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
 
-    const node = memoryNodes.find(n => n.id === nodeId);
+    const result = await nodesRepo.getNodeById(nodeId);
 
-    if (!node) {
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    if (!result.data) {
       return c.json({
         success: false,
         error: 'Node not found',
@@ -160,7 +192,7 @@ nodesRouter.get('/:id', async (c) => {
 
     return c.json({
       success: true,
-      data: node,
+      data: result.data,
     });
   } catch (error) {
     console.error('Failed to get node:', error);
@@ -176,6 +208,7 @@ nodesRouter.get('/:id', async (c) => {
 nodesRouter.post('/', async (c) => {
   try {
     const body = await c.req.json();
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
 
     // 基础验证
     if (!body.name || !body.type || !body.server || !body.port) {
@@ -188,7 +221,7 @@ nodesRouter.post('/', async (c) => {
 
     // 生成节点 ID 和时间戳
     const now = new Date().toISOString();
-    const node: SimpleNode = {
+    const node: any = {
       ...body,
       id: body.id || `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       enabled: body.enabled !== undefined ? body.enabled : true,
@@ -196,30 +229,29 @@ nodesRouter.post('/', async (c) => {
       updatedAt: now,
     };
 
-    // 检查 ID 是否已存在
-    if (memoryNodes.some(n => n.id === node.id)) {
+    // 创建节点
+    const result = await nodesRepo.createNode(node);
+
+    if (!result.success) {
+      // 检查是否是重复错误
+      if (result.error?.includes('UNIQUE constraint failed')) {
+        return c.json({
+          success: false,
+          error: 'Conflict',
+          message: 'Node with this ID or name already exists',
+        }, 409);
+      }
+
       return c.json({
         success: false,
-        error: 'Conflict',
-        message: `Node with id '${node.id}' already exists`,
-      }, 409);
+        error: 'Database error',
+        message: result.error,
+      }, 500);
     }
-
-    // 检查名称是否已存在
-    if (memoryNodes.some(n => n.name === node.name)) {
-      return c.json({
-        success: false,
-        error: 'Conflict',
-        message: `Node with name '${node.name}' already exists`,
-      }, 409);
-    }
-
-    // 添加新节点
-    addNode(node);
 
     return c.json({
       success: true,
-      data: node,
+      data: result.data,
       message: 'Node created successfully',
     }, 201);
   } catch (error) {
@@ -237,10 +269,19 @@ nodesRouter.put('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
     const body = await c.req.json();
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
 
-    const nodeIndex = memoryNodes.findIndex(n => n.id === nodeId);
+    // 首先检查节点是否存在
+    const existingResult = await nodesRepo.getNodeById(nodeId);
+    if (!existingResult.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: existingResult.error,
+      }, 500);
+    }
 
-    if (nodeIndex === -1) {
+    if (!existingResult.data) {
       return c.json({
         success: false,
         error: 'Node not found',
@@ -249,14 +290,26 @@ nodesRouter.put('/:id', async (c) => {
     }
 
     // 更新节点
-    const updatedNode = updateNode(nodeId, {
+    const updatedNode = {
+      ...existingResult.data,
       ...body,
+      id: nodeId, // 确保ID不被修改
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    const result = await nodesRepo.updateNode(nodeId, updatedNode);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
 
     return c.json({
       success: true,
-      data: updatedNode,
+      data: result.data,
       message: 'Node updated successfully',
     });
 
@@ -274,10 +327,19 @@ nodesRouter.put('/:id', async (c) => {
 nodesRouter.delete('/:id', async (c) => {
   try {
     const nodeId = c.req.param('id');
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
 
-    const nodeIndex = memoryNodes.findIndex(n => n.id === nodeId);
+    // 首先获取节点信息
+    const existingResult = await nodesRepo.getNodeById(nodeId);
+    if (!existingResult.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: existingResult.error,
+      }, 500);
+    }
 
-    if (nodeIndex === -1) {
+    if (!existingResult.data) {
       return c.json({
         success: false,
         error: 'Node not found',
@@ -286,11 +348,19 @@ nodesRouter.delete('/:id', async (c) => {
     }
 
     // 删除节点
-    const deletedNode = deleteNode(nodeId);
+    const result = await nodesRepo.deleteNode(nodeId);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
 
     return c.json({
       success: true,
-      data: deletedNode,
+      data: existingResult.data,
       message: 'Node deleted successfully',
     });
   } catch (error) {

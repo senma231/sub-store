@@ -55,6 +55,19 @@ app.use('*', async (c, next) => {
   c.set('authRepo', authRepo);
   c.set('statsRepo', statsRepo);
 
+  // 在第一次请求时初始化数据库
+  if (!globalThis.dbInitialized) {
+    try {
+      const { initializeDatabase } = await import('./database/init');
+      await initializeDatabase(db);
+      globalThis.dbInitialized = true;
+      console.log('Database initialized successfully');
+    } catch (error) {
+      console.error('Database initialization failed:', error);
+      // 继续处理请求，但记录错误
+    }
+  }
+
   await next();
 });
 

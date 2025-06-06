@@ -8,16 +8,35 @@ healthRouter.get('/', async (c) => {
   const startTime = Date.now();
 
   try {
+    // 检查数据库健康状态
+    let dbHealth = { healthy: true, nodeCount: 0, subscriptionCount: 0 };
+    try {
+      const db = c.get('db');
+      if (db) {
+        const { checkDatabaseHealth } = await import('../database/init');
+        dbHealth = await checkDatabaseHealth(db);
+      }
+    } catch (dbError) {
+      console.warn('Database health check failed:', dbError);
+      dbHealth = { healthy: false, nodeCount: 0, subscriptionCount: 0, error: 'Database check failed' };
+    }
+
     const responseTime = Date.now() - startTime;
 
     return c.json({
-      status: 'healthy',
+      status: dbHealth.healthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       environment: c.env.ENVIRONMENT || 'production',
       version: '1.0.0',
       services: {
         api: 'healthy',
         workers: 'healthy',
+        database: dbHealth.healthy ? 'healthy' : 'unhealthy',
+      },
+      database: {
+        nodeCount: dbHealth.nodeCount,
+        subscriptionCount: dbHealth.subscriptionCount,
+        error: dbHealth.error,
       },
       performance: {
         responseTime: `${responseTime}ms`,
@@ -34,6 +53,7 @@ healthRouter.get('/', async (c) => {
       services: {
         api: 'unhealthy',
         workers: 'unhealthy',
+        database: 'unknown',
       },
       error: error instanceof Error ? error.message : 'Unknown error',
     }, 503);

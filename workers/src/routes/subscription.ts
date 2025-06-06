@@ -20,13 +20,26 @@ interface SimpleNode {
 
 export const subscriptionRouter = new Hono<{ Bindings: Env }>();
 
-// 获取实际的内存节点数据
-const getMemoryNodes = async () => {
+// 获取数据库中的节点数据
+const getNodesFromDatabase = async (nodesRepo: any, nodeIds?: string[]) => {
   try {
-    const { memoryNodes } = await import('../data/memoryNodes');
-    return memoryNodes;
+    if (nodeIds && nodeIds.length > 0) {
+      // 获取指定的节点
+      const nodes = [];
+      for (const nodeId of nodeIds) {
+        const result = await nodesRepo.getNodeById(nodeId);
+        if (result.success && result.data) {
+          nodes.push(result.data);
+        }
+      }
+      return nodes;
+    } else {
+      // 获取所有启用的节点
+      const result = await nodesRepo.getNodes(1, 1000, { enabled: true });
+      return result.data || [];
+    }
   } catch (error) {
-    console.error('Failed to load memory nodes:', error);
+    console.error('Failed to load nodes from database:', error);
     return [];
   }
 };
@@ -43,8 +56,8 @@ subscriptionRouter.get('/:format', async (c) => {
     }
 
     // 获取所有启用的节点
-    const memoryNodes = await getMemoryNodes();
-    const enabledNodes = memoryNodes.filter(node => node.enabled);
+    const nodesRepo = c.get('nodesRepo');
+    const enabledNodes = await getNodesFromDatabase(nodesRepo);
 
     if (enabledNodes.length === 0) {
       return c.text('No enabled nodes found', 404);
@@ -81,8 +94,10 @@ subscriptionRouter.get('/:format/info', async (c) => {
       }, 400);
     }
 
-    const memoryNodes = await getMemoryNodes();
-    const enabledNodes = memoryNodes.filter(node => node.enabled);
+    const nodesRepo = c.get('nodesRepo');
+    const allNodesResult = await nodesRepo.getNodes(1, 1000);
+    const allNodes = allNodesResult.data || [];
+    const enabledNodes = allNodes.filter(node => node.enabled);
 
     // 统计节点类型
     const nodeStats = enabledNodes.reduce((stats, node) => {
@@ -99,7 +114,7 @@ subscriptionRouter.get('/:format/info', async (c) => {
           contentType: format === 'clash' ? 'application/yaml' : 'text/plain',
         },
         statistics: {
-          totalNodes: memoryNodes.length,
+          totalNodes: allNodes.length,
           enabledNodes: enabledNodes.length,
           nodeTypes: nodeStats,
         },
@@ -144,15 +159,17 @@ subscriptionRouter.get('/', async (c) => {
   ];
 
   // 获取实际节点数据用于统计
-  const { memoryNodes } = await import('../data/memoryNodes');
+  const nodesRepo = c.get('nodesRepo');
+  const allNodesResult = await nodesRepo.getNodes(1, 1000);
+  const allNodes = allNodesResult.data || [];
 
   return c.json({
     success: true,
     data: {
       formats,
       statistics: {
-        totalNodes: memoryNodes.length,
-        enabledNodes: memoryNodes.filter(n => n.enabled).length,
+        totalNodes: allNodes.length,
+        enabledNodes: allNodes.filter(n => n.enabled).length,
       },
       examples: {
         v2ray: `${c.req.url}/v2ray`,
@@ -218,28 +235,24 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     }
 
     // 获取关联的节点
-    const { memoryNodes } = await import('../data/memoryNodes');
-    const selectedNodes = memoryNodes.filter(node =>
-      subscription.nodeIds.includes(node.id) && node.enabled
-    );
+    const nodesRepo = c.get('nodesRepo');
+    const selectedNodes = await getNodesFromDatabase(nodesRepo, subscription.nodeIds);
+    const enabledNodes = selectedNodes.filter(node => node.enabled);
 
-    if (selectedNodes.length === 0) {
+    if (enabledNodes.length === 0) {
       return c.text('No valid nodes found', 404);
     }
 
-    // 更新访问统计
-    updateSubscriptionAccess(uuid);
-
     // 生成订阅内容
     const { content, contentType, filename } = generateCustomSubscriptionContent(
-      selectedNodes,
+      enabledNodes,
       subscription.format
     );
 
     return c.text(content, 200, {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Subscription-Userinfo': `upload=0; download=0; total=${selectedNodes.length}; expire=${subscription.expiresAt ? Math.floor(new Date(subscription.expiresAt).getTime() / 1000) : 0}`,
+      'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=${subscription.expiresAt ? Math.floor(new Date(subscription.expiresAt).getTime() / 1000) : 0}`,
       'Profile-Title': subscription.name,
       'Profile-Update-Interval': '24',
     });
@@ -285,25 +298,24 @@ subscriptionRouter.get('/encoded/:data', async (c) => {
     }
 
     // 获取关联的节点
-    const { memoryNodes } = await import('../data/memoryNodes');
-    const selectedNodes = memoryNodes.filter(node =>
-      subscriptionData.nodeIds.includes(node.id) && node.enabled
-    );
+    const nodesRepo = c.get('nodesRepo');
+    const selectedNodes = await getNodesFromDatabase(nodesRepo, subscriptionData.nodeIds);
+    const enabledNodes = selectedNodes.filter(node => node.enabled);
 
-    if (selectedNodes.length === 0) {
+    if (enabledNodes.length === 0) {
       return c.text('No valid nodes found', 404);
     }
 
     // 生成订阅内容
     const { content, contentType, filename } = generateCustomSubscriptionContent(
-      selectedNodes,
+      enabledNodes,
       subscriptionData.format
     );
 
     return c.text(content, 200, {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Subscription-Userinfo': `upload=0; download=0; total=${selectedNodes.length}; expire=${subscriptionData.expiresAt ? Math.floor(new Date(subscriptionData.expiresAt).getTime() / 1000) : 0}`,
+      'Subscription-Userinfo': `upload=0; download=0; total=${enabledNodes.length}; expire=${subscriptionData.expiresAt ? Math.floor(new Date(subscriptionData.expiresAt).getTime() / 1000) : 0}`,
       'Profile-Title': subscriptionData.name,
       'Profile-Update-Interval': '24',
     });

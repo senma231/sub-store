@@ -1,23 +1,34 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import {
-  customSubscriptions,
-  setCustomSubscription,
-  getCustomSubscription,
-  deleteCustomSubscription,
-  getAllCustomSubscriptions,
-  type CustomSubscriptionData
-} from '../data/customSubscriptions';
+import { authMiddleware } from '../middleware/auth';
+import { CustomSubscriptionsRepository } from '../database/customSubscriptions';
+import { NodesRepository } from '../database/nodes';
 
 export const customSubscriptionsRouter = new Hono<{ Bindings: Env }>();
 
-// 获取实际的内存节点数据
-const getMemoryNodes = async () => {
+// 应用认证中间件
+customSubscriptionsRouter.use('*', authMiddleware);
+
+// 获取数据库中的节点数据
+const getNodesFromDatabase = async (nodesRepo: NodesRepository, nodeIds?: string[]) => {
   try {
-    const { memoryNodes } = await import('../data/memoryNodes');
-    return memoryNodes;
+    if (nodeIds && nodeIds.length > 0) {
+      // 获取指定的节点
+      const nodes = [];
+      for (const nodeId of nodeIds) {
+        const result = await nodesRepo.getNodeById(nodeId);
+        if (result.success && result.data) {
+          nodes.push(result.data);
+        }
+      }
+      return nodes;
+    } else {
+      // 获取所有启用的节点
+      const result = await nodesRepo.getNodes(1, 1000, { enabled: true });
+      return result.data || [];
+    }
   } catch (error) {
-    console.error('Failed to load memory nodes:', error);
+    console.error('Failed to load nodes from database:', error);
     return [];
   }
 };
@@ -26,7 +37,10 @@ const getMemoryNodes = async () => {
 customSubscriptionsRouter.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const db = c.get('db');
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
+
     // 验证请求数据
     if (!body.name || !body.nodeIds || !Array.isArray(body.nodeIds) || !body.format) {
       return c.json({
@@ -37,10 +51,13 @@ customSubscriptionsRouter.post('/', async (c) => {
     }
 
     // 验证节点ID
-    const memoryNodes = await getMemoryNodes();
-    const validNodeIds = body.nodeIds.filter((id: string) =>
-      memoryNodes.some(node => node.id === id)
-    );
+    const validNodeIds = [];
+    for (const nodeId of body.nodeIds) {
+      const result = await nodesRepo.getNodeById(nodeId);
+      if (result.success && result.data && result.data.enabled) {
+        validNodeIds.push(nodeId);
+      }
+    }
 
     if (validNodeIds.length === 0) {
       return c.json({
@@ -60,24 +77,29 @@ customSubscriptionsRouter.post('/', async (c) => {
       }, 400);
     }
 
-    // 生成UUID和时间戳
+    // 生成UUID
     const uuid = crypto.randomUUID();
-    const now = new Date().toISOString();
-    
-    const subscription = {
-      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+
+    const subscriptionData = {
       uuid,
       name: body.name,
       nodeIds: validNodeIds,
       format: body.format,
       expiresAt: body.expiresAt,
-      createdAt: now,
-      updatedAt: now,
-      accessCount: 0,
     };
 
-    // 存储订阅
-    setCustomSubscription(uuid, subscription);
+    // 存储到数据库
+    const result = await customSubsRepo.create(subscriptionData);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    const subscription = result.data;
 
     // 生成订阅URL（包含备用的编码URL）
     const baseUrl = new URL(c.req.url).origin;
@@ -122,9 +144,20 @@ customSubscriptionsRouter.post('/', async (c) => {
 customSubscriptionsRouter.get('/', async (c) => {
   try {
     console.log('Getting custom subscriptions list');
-    const subscriptions = getAllCustomSubscriptions()
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const db = c.get('db');
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
 
+    const result = await customSubsRepo.getAll();
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    const subscriptions = result.data || [];
     console.log('Found subscriptions:', subscriptions.length);
 
     // 确保返回的数据格式与前端期望的一致
@@ -147,9 +180,21 @@ customSubscriptionsRouter.get('/', async (c) => {
 customSubscriptionsRouter.get('/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
-    const subscription = getCustomSubscription(uuid);
+    const db = c.get('db');
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
 
-    if (!subscription) {
+    const result = await customSubsRepo.getByUuid(uuid);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    if (!result.data) {
       return c.json({
         success: false,
         error: 'Not found',
@@ -157,9 +202,10 @@ customSubscriptionsRouter.get('/:uuid', async (c) => {
       }, 404);
     }
 
+    const subscription = result.data;
+
     // 获取关联的节点信息
-    const memoryNodes = await getMemoryNodes();
-    const nodes = memoryNodes.filter(node => subscription.nodeIds.includes(node.id));
+    const nodes = await getNodesFromDatabase(nodesRepo, subscription.nodeIds);
 
     return c.json({
       success: true,
@@ -187,9 +233,20 @@ customSubscriptionsRouter.get('/:uuid', async (c) => {
 customSubscriptionsRouter.delete('/:uuid', async (c) => {
   try {
     const uuid = c.req.param('uuid');
-    const subscription = getCustomSubscription(uuid);
+    const db = c.get('db');
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
 
-    if (!subscription) {
+    // 首先检查订阅是否存在
+    const existingResult = await customSubsRepo.getByUuid(uuid);
+    if (!existingResult.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: existingResult.error,
+      }, 500);
+    }
+
+    if (!existingResult.data) {
       return c.json({
         success: false,
         error: 'Not found',
@@ -197,7 +254,16 @@ customSubscriptionsRouter.delete('/:uuid', async (c) => {
       }, 404);
     }
 
-    deleteCustomSubscription(uuid);
+    // 删除订阅
+    const result = await customSubsRepo.delete(uuid);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
 
     return c.json({
       success: true,
