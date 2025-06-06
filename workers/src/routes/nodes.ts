@@ -9,6 +9,32 @@ export const nodesRouter = new Hono<{ Bindings: Env }>();
 // 应用认证中间件到所有路由
 nodesRouter.use('*', authMiddleware);
 
+// 内存存储作为回退
+const memoryNodes: any[] = [];
+
+// 内存存储辅助函数
+function addNode(node: any): any {
+  memoryNodes.push(node);
+  return node;
+}
+
+function updateNode(nodeId: string, updates: any): any | null {
+  const index = memoryNodes.findIndex(n => n.id === nodeId);
+  if (index === -1) return null;
+
+  memoryNodes[index] = { ...memoryNodes[index], ...updates };
+  return memoryNodes[index];
+}
+
+function deleteNode(nodeId: string): any | null {
+  const index = memoryNodes.findIndex(n => n.id === nodeId);
+  if (index === -1) return null;
+
+  const deletedNode = memoryNodes[index];
+  memoryNodes.splice(index, 1);
+  return deletedNode;
+}
+
 // 获取所有节点
 nodesRouter.get('/', async (c) => {
   try {
@@ -18,35 +44,68 @@ nodesRouter.get('/', async (c) => {
     const type = c.req.query('type') || '';
     const enabled = c.req.query('enabled');
 
-    // 使用数据库存储
-    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const nodesRepo = c.get('nodesRepo');
 
-    // 构建查询条件
-    const filters: any = {};
-    if (search) {
-      filters.search = search;
-    }
-    if (type) {
-      filters.type = type;
-    }
-    if (enabled !== undefined) {
-      filters.enabled = enabled === 'true';
+    let nodes: any[] = [];
+    let total = 0;
+
+    if (nodesRepo) {
+      // 使用数据库存储
+      const params: any = {
+        page,
+        limit,
+      };
+
+      if (search) {
+        params.search = search;
+      }
+      if (type) {
+        params.type = type;
+      }
+      if (enabled !== undefined) {
+        params.enabled = enabled === 'true';
+      }
+
+      const result = await nodesRepo.getNodes(params);
+
+      if (!result.success) {
+        console.error('Failed to get nodes from database:', result.error);
+        return c.json({
+          success: false,
+          error: 'Database error',
+          message: result.error,
+        }, 500);
+      }
+
+      const paginatedData = result.data;
+      if (paginatedData) {
+        nodes = paginatedData.items || [];
+        total = paginatedData.total || 0;
+      }
+    } else {
+      // 使用内存存储作为回退
+      console.log('Using memory storage for nodes');
+      let filteredNodes = [...memoryNodes];
+
+      // 应用过滤器
+      if (search) {
+        filteredNodes = filteredNodes.filter(node =>
+          node.name?.toLowerCase().includes(search.toLowerCase()) ||
+          node.server?.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+      if (type) {
+        filteredNodes = filteredNodes.filter(node => node.type === type);
+      }
+      if (enabled !== undefined) {
+        filteredNodes = filteredNodes.filter(node => node.enabled === (enabled === 'true'));
+      }
+
+      total = filteredNodes.length;
+      const startIndex = (page - 1) * limit;
+      nodes = filteredNodes.slice(startIndex, startIndex + limit);
     }
 
-    // 从数据库获取节点
-    const result = await nodesRepo.getNodes(page, limit, filters);
-
-    if (!result.success) {
-      console.error('Failed to get nodes from database:', result.error);
-      return c.json({
-        success: false,
-        error: 'Database error',
-        message: result.error,
-      }, 500);
-    }
-
-    const nodes = result.data || [];
-    const total = result.total || 0;
     const totalPages = Math.ceil(total / limit);
 
     return c.json({
@@ -97,8 +156,10 @@ nodesRouter.get('/export', async (c) => {
       }
     } else {
       // 获取所有节点
-      const result = await nodesRepo.getNodes(1, 1000); // 获取前1000个节点
-      nodesToExport = result.data || [];
+      const result = await nodesRepo.getNodes({ page: 1, limit: 1000 });
+      if (result.success && result.data) {
+        nodesToExport = result.data.items || [];
+      }
     }
 
     console.log('Nodes to export:', nodesToExport.length);
