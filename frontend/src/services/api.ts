@@ -3,7 +3,7 @@ import { message } from 'antd';
 import type { ApiResponse } from '@/types';
 
 // API 基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
 
 // 创建 axios 实例
 const api: AxiosInstance = axios.create({
