@@ -271,6 +271,12 @@ const NodesPage: React.FC = () => {
     },
     onSuccess: () => {
       message.success('自定义订阅创建成功');
+      // 使自定义订阅列表缓存失效，触发重新获取
+      queryClient.invalidateQueries({ queryKey: ['custom-subscriptions'] });
+      // 关闭模态框
+      setCustomSubModalVisible(false);
+      // 清空选择
+      setSelectedRowKeys([]);
     },
     onError: (error: any) => {
       message.error(error.response?.data?.message || '创建自定义订阅失败');
