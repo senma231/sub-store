@@ -19,7 +19,10 @@
     "test:workers": "cd workers && npm run test",
     "lint": "npm run lint:frontend && npm run lint:workers",
     "lint:frontend": "cd frontend && npm run lint",
-    "lint:workers": "cd workers && npm run lint"
+    "lint:workers": "cd workers && npm run lint",
+    "setup:secrets": "chmod +x scripts/setup-github-secrets.sh && ./scripts/setup-github-secrets.sh",
+    "verify:secrets": "node scripts/verify-secrets-config.js",
+    "verify:config": "npm run verify:secrets"
   },
   "keywords": [
     "proxy",

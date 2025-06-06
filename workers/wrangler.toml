@@ -12,10 +12,12 @@ compatibility_flags = ["nodejs_compat"]
 # 实际部署地址：https://substore-api.senmago231.workers.dev
 
 # D1 数据库配置 (替换 KV)
+# 注意：database_id 和 database_name 将在部署时通过环境变量动态注入
+# 这些值存储在 GitHub Repository Secrets 中以确保安全性
 [[d1_databases]]
 binding = "DB"
-database_name = "sub-store-db"
-database_id = "placeholder"
+database_name = "${CF_D1_DATABASE_NAME}"
+database_id = "${CF_D1_DATABASE_ID}"
 
 [vars]
 ENVIRONMENT = "production"
