@@ -22,7 +22,7 @@ const initTestData = () => {
       id: 'test-subscription-1',
       uuid: 'test-uuid-123',
       name: '测试自定义订阅',
-      nodeIds: ['node-1', 'node-2'],
+      nodeIds: ["SGL_vless+ws|rlvU.love@xray.com","JPL-04o3ee06","JP自用"],
       format: 'v2ray',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
