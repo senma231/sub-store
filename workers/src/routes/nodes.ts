@@ -316,14 +316,20 @@ nodesRouter.post('/batch', async (c) => {
 // 导出节点
 nodesRouter.get('/export', async (c) => {
   try {
+    console.log('Export request received');
     const format = c.req.query('format') || 'json';
     const nodeIds = c.req.query('nodeIds')?.split(',');
+
+    console.log('Export format:', format);
+    console.log('Node IDs:', nodeIds);
 
     // 获取要导出的节点
     let nodesToExport = memoryNodes;
     if (nodeIds && nodeIds.length > 0) {
       nodesToExport = memoryNodes.filter(node => nodeIds.includes(node.id));
     }
+
+    console.log('Nodes to export:', nodesToExport.length);
 
     if (format === 'json') {
       // JSON 格式导出
@@ -334,9 +340,15 @@ nodesRouter.get('/export', async (c) => {
         nodes: nodesToExport,
       };
 
-      return c.json(exportData, 200, {
-        'Content-Disposition': 'attachment; filename="nodes.json"',
-        'Content-Type': 'application/json',
+      return new Response(JSON.stringify(exportData, null, 2), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Disposition': 'attachment; filename="nodes.json"',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
       });
     } else if (format === 'csv') {
       // CSV 格式导出
@@ -354,9 +366,15 @@ nodesRouter.get('/export', async (c) => {
 
       const csvContent = csvRows.join('\n');
 
-      return c.text(csvContent, 200, {
-        'Content-Disposition': 'attachment; filename="nodes.csv"',
-        'Content-Type': 'text/csv',
+      return new Response(csvContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="nodes.csv"',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
       });
     } else {
       return c.json({

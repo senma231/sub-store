@@ -105,15 +105,16 @@ customSubscriptionsRouter.post('/', async (c) => {
 // 获取自定义订阅列表
 customSubscriptionsRouter.get('/', async (c) => {
   try {
+    console.log('Getting custom subscriptions list');
     const subscriptions = getAllCustomSubscriptions()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+    console.log('Found subscriptions:', subscriptions.length);
+
+    // 确保返回的数据格式与前端期望的一致
     return c.json({
       success: true,
-      data: {
-        subscriptions,
-        total: subscriptions.length,
-      },
+      data: subscriptions, // 直接返回数组，而不是包装在对象中
     });
 
   } catch (error) {
