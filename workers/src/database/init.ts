@@ -1,7 +1,6 @@
 import { Database } from './index';
 import { NodesRepository } from './nodes';
 import { CustomSubscriptionsRepository } from './customSubscriptions';
-import { memoryNodes } from '../data/memoryNodes';
 
 /**
  * 初始化数据库表和数据
@@ -18,31 +17,7 @@ export async function initializeDatabase(db: Database): Promise<void> {
 
     // 创建节点仓库并初始化表
     const nodesRepo = new NodesRepository(db);
-    
-    // 检查节点表是否已有数据
-    const existingNodesResult = await nodesRepo.getNodes(1, 1);
-    
-    if (existingNodesResult.success && existingNodesResult.data && existingNodesResult.data.length === 0) {
-      console.log('No existing nodes found, importing initial data...');
-      
-      // 导入初始节点数据
-      for (const node of memoryNodes) {
-        try {
-          const createResult = await nodesRepo.createNode(node);
-          if (!createResult.success) {
-            console.warn(`Failed to import node ${node.id}:`, createResult.error);
-          } else {
-            console.log(`Imported node: ${node.name}`);
-          }
-        } catch (error) {
-          console.warn(`Error importing node ${node.id}:`, error);
-        }
-      }
-      
-      console.log(`Imported ${memoryNodes.length} initial nodes`);
-    } else {
-      console.log('Database already contains nodes, skipping initial import');
-    }
+    console.log('Nodes repository initialized');
 
     // 创建自定义订阅仓库并初始化表
     const customSubsRepo = new CustomSubscriptionsRepository(db);

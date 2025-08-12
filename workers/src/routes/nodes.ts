@@ -3,35 +3,13 @@ import { Env, SimpleNode } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { NodesRepository } from '../database/nodes';
 import { Database } from '../database';
-import { memoryNodes } from '../data/memoryNodes';
 
 export const nodesRouter = new Hono<{ Bindings: Env }>();
 
 // 应用认证中间件到所有路由
 nodesRouter.use('*', authMiddleware);
 
-// 内存存储辅助函数
-function addNode(node: any): any {
-  memoryNodes.push(node);
-  return node;
-}
 
-function updateNode(nodeId: string, updates: any): any | null {
-  const index = memoryNodes.findIndex(n => n.id === nodeId);
-  if (index === -1) return null;
-
-  memoryNodes[index] = { ...memoryNodes[index], ...updates };
-  return memoryNodes[index];
-}
-
-function deleteNode(nodeId: string): any | null {
-  const index = memoryNodes.findIndex(n => n.id === nodeId);
-  if (index === -1) return null;
-
-  const deletedNode = memoryNodes[index];
-  memoryNodes.splice(index, 1);
-  return deletedNode;
-}
 
 // 获取所有节点
 nodesRouter.get('/', async (c) => {
@@ -48,7 +26,7 @@ nodesRouter.get('/', async (c) => {
     let total = 0;
 
     if (nodesRepo) {
-      // 使用数据库存储
+      // 尝试使用数据库存储
       const params: any = {
         page,
         limit,
@@ -76,32 +54,14 @@ nodesRouter.get('/', async (c) => {
       }
 
       const paginatedData = result.data;
-      if (paginatedData) {
-        nodes = paginatedData.items || [];
-        total = paginatedData.total || 0;
-      }
+      nodes = paginatedData?.items || [];
+      total = paginatedData?.total || 0;
     } else {
-      // 使用内存存储作为回退
-      console.log('Using memory storage for nodes');
-      let filteredNodes = [...memoryNodes];
-
-      // 应用过滤器
-      if (search) {
-        filteredNodes = filteredNodes.filter(node =>
-          node.name?.toLowerCase().includes(search.toLowerCase()) ||
-          node.server?.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-      if (type) {
-        filteredNodes = filteredNodes.filter(node => node.type === type);
-      }
-      if (enabled !== undefined) {
-        filteredNodes = filteredNodes.filter(node => node.enabled === (enabled === 'true'));
-      }
-
-      total = filteredNodes.length;
-      const startIndex = (page - 1) * limit;
-      nodes = filteredNodes.slice(startIndex, startIndex + limit);
+      return c.json({
+        success: false,
+        error: 'Database not available',
+        message: 'Database connection is required',
+      }, 500);
     }
 
     const totalPages = Math.ceil(total / limit);
