@@ -11,6 +11,7 @@ import { AuthRepository } from './database/auth';
 import { StatsRepository } from './database/stats';
 import { UsersRepository } from './repositories/UsersRepository';
 import { CustomSubscriptionsRepository } from './database/customSubscriptions';
+import { SubscriptionsRepository } from './database/subscriptions';
 
 import { nodesRouter } from './routes/nodes';
 import { subscriptionRouter } from './routes/subscription';
@@ -18,6 +19,7 @@ import { authRouter } from './routes/auth';
 import { statsRouter } from './routes/stats';
 import { healthRouter } from './routes/health';
 import { customSubscriptionsRouter } from './routes/customSubscriptions';
+import { subscriptionsRouter } from './routes/subscriptions';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -57,6 +59,7 @@ app.use('*', async (c, next) => {
       const statsRepo = new StatsRepository(db);
       const usersRepo = new UsersRepository(c.env.DB);
       const customSubsRepo = new CustomSubscriptionsRepository(db);
+      const subscriptionsRepo = new SubscriptionsRepository(db);
 
       c.set('db', db);
       c.set('nodesRepo', nodesRepo);
@@ -64,6 +67,7 @@ app.use('*', async (c, next) => {
       c.set('statsRepo', statsRepo);
       c.set('usersRepo', usersRepo);
       c.set('customSubsRepo', customSubsRepo);
+      c.set('subscriptionsRepo', subscriptionsRepo);
 
       // 在第一次请求时初始化数据库
       if (!globalThis.dbInitialized) {
@@ -167,6 +171,7 @@ app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
 app.route('/api/subscriptions', customSubscriptionsRouter);
+app.route('/api/manage/subscriptions', subscriptionsRouter);
 
 // 根路径
 app.get('/', (c) => {

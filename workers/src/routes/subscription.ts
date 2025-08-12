@@ -586,6 +586,196 @@ function convertToYaml(obj: any, indent = 0): string {
   return yaml;
 }
 
+// 解析订阅链接
+subscriptionRouter.post('/parse', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { url } = body;
+
+    if (!url) {
+      return c.json({
+        success: false,
+        error: 'Validation Error',
+        message: 'URL is required',
+      }, 400);
+    }
+
+    console.log('Parsing subscription URL:', url);
+
+    // 获取订阅内容
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Sub-Store/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      return c.json({
+        success: false,
+        error: 'Fetch Error',
+        message: `Failed to fetch subscription: ${response.status} ${response.statusText}`,
+      }, 400);
+    }
+
+    const content = await response.text();
+    console.log('Subscription content length:', content.length);
+
+    // 解析订阅内容
+    const nodes = parseSubscriptionContent(content);
+
+    return c.json({
+      success: true,
+      data: {
+        nodes,
+        total: nodes.length,
+        url,
+      },
+      message: `Successfully parsed ${nodes.length} nodes from subscription`,
+    });
+
+  } catch (error) {
+    console.error('Subscription parse error:', error);
+    return c.json({
+      success: false,
+      error: 'Parse Error',
+      message: error instanceof Error ? error.message : 'Failed to parse subscription',
+    }, 500);
+  }
+});
+
+// 解析订阅内容
+function parseSubscriptionContent(content: string): any[] {
+  const nodes: any[] = [];
+
+  try {
+    // 尝试解析为Base64编码的节点链接
+    let decodedContent = content;
+    try {
+      decodedContent = atob(content);
+    } catch {
+      // 如果不是Base64，使用原内容
+      decodedContent = content;
+    }
+
+    // 按行分割并解析每个链接
+    const lines = decodedContent.split('\n').filter(line => line.trim());
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+
+      try {
+        const node = parseNodeFromLink(trimmedLine, index);
+        if (node) {
+          nodes.push(node);
+        }
+      } catch (error) {
+        console.warn(`Failed to parse line ${index + 1}:`, error);
+      }
+    });
+
+  } catch (error) {
+    console.error('Failed to parse subscription content:', error);
+  }
+
+  return nodes;
+}
+
+// 从链接解析节点
+function parseNodeFromLink(link: string, index: number): any | null {
+  try {
+    if (link.startsWith('vless://')) {
+      return parseVlessLink(link, index);
+    } else if (link.startsWith('vmess://')) {
+      return parseVmessLink(link, index);
+    } else if (link.startsWith('trojan://')) {
+      return parseTrojanLink(link, index);
+    } else if (link.startsWith('ss://')) {
+      return parseShadowsocksLink(link, index);
+    }
+  } catch (error) {
+    console.warn(`Failed to parse link: ${link}`, error);
+  }
+
+  return null;
+}
+
+// 解析VLESS链接
+function parseVlessLink(link: string, index: number): any {
+  const url = new URL(link);
+  const params = new URLSearchParams(url.search);
+
+  return {
+    name: decodeURIComponent(url.hash.slice(1)) || `VLESS-${index + 1}`,
+    type: 'vless',
+    server: url.hostname,
+    port: parseInt(url.port) || 443,
+    uuid: url.username,
+    encryption: params.get('encryption') || 'none',
+    flow: params.get('flow') || undefined,
+    network: params.get('type') || 'tcp',
+    security: params.get('security') || 'none',
+    sni: params.get('sni') || undefined,
+    wsPath: params.get('path') || undefined,
+    enabled: true,
+  };
+}
+
+// 解析VMess链接
+function parseVmessLink(link: string, index: number): any {
+  const base64Data = link.replace('vmess://', '');
+  const jsonStr = atob(base64Data);
+  const config = JSON.parse(jsonStr);
+
+  return {
+    name: config.ps || `VMess-${index + 1}`,
+    type: 'vmess',
+    server: config.add,
+    port: parseInt(config.port),
+    uuid: config.id,
+    alterId: parseInt(config.aid) || 0,
+    security: config.scy || 'auto',
+    network: config.net || 'tcp',
+    tls: config.tls === 'tls',
+    sni: config.sni || undefined,
+    wsPath: config.path || undefined,
+    enabled: true,
+  };
+}
+
+// 解析Trojan链接
+function parseTrojanLink(link: string, index: number): any {
+  const url = new URL(link);
+  const params = new URLSearchParams(url.search);
+
+  return {
+    name: decodeURIComponent(url.hash.slice(1)) || `Trojan-${index + 1}`,
+    type: 'trojan',
+    server: url.hostname,
+    port: parseInt(url.port) || 443,
+    password: url.username,
+    sni: params.get('sni') || undefined,
+    enabled: true,
+  };
+}
+
+// 解析Shadowsocks链接
+function parseShadowsocksLink(link: string, index: number): any {
+  const url = new URL(link);
+  const userInfo = atob(url.username);
+  const [method, password] = userInfo.split(':');
+
+  return {
+    name: decodeURIComponent(url.hash.slice(1)) || `SS-${index + 1}`,
+    type: 'ss',
+    server: url.hostname,
+    port: parseInt(url.port),
+    method,
+    password,
+    enabled: true,
+  };
+}
+
 // 生成空订阅内容的函数
 function generateEmptySubscriptionContent(format: string): string {
   switch (format) {

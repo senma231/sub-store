@@ -1,6 +1,7 @@
 import { Database } from './index';
 import { NodesRepository } from './nodes';
 import { CustomSubscriptionsRepository } from './customSubscriptions';
+import { SubscriptionsRepository } from './subscriptions';
 
 /**
  * 初始化数据库表和数据
@@ -23,6 +24,11 @@ export async function initializeDatabase(db: Database): Promise<void> {
     const customSubsRepo = new CustomSubscriptionsRepository(db);
     await customSubsRepo.createTable();
     await customSubsRepo.createIndexes();
+
+    // 创建订阅管理仓库并初始化表
+    const subscriptionsRepo = new SubscriptionsRepository(db);
+    await subscriptionsRepo.createTable();
+    await subscriptionsRepo.createIndexes();
 
     console.log('Database initialization completed successfully');
 

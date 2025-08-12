@@ -21,7 +21,8 @@ import {
   LinkOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  GlobalOutlined
 } from '@ant-design/icons';
 import type { ProxyNode } from '@/types';
 
@@ -71,6 +72,7 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
   const [parsedNodes, setParsedNodes] = useState<ParsedNode[]>([]);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('links');
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   // 解析节点链接
   const parseNodeLinks = (linksText: string): ParsedNode[] => {
@@ -99,6 +101,65 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     });
 
     return nodes;
+  };
+
+  // 解析订阅链接
+  const handleParseSubscription = async () => {
+    const subscriptionUrl = form.getFieldValue('subscriptionUrl');
+    if (!subscriptionUrl?.trim()) {
+      message.warning('请输入订阅链接');
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    try {
+      // 通过代理获取订阅内容
+      const response = await fetch('/api/subscription/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({ url: subscriptionUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || '解析失败');
+      }
+
+      const nodes = result.data.nodes || [];
+      if (nodes.length === 0) {
+        message.warning('订阅链接中没有找到有效节点');
+        return;
+      }
+
+      // 转换为ParsedNode格式
+      const parsedNodes = nodes.map((node: any, index: number) => ({
+        id: `sub-${Date.now()}-${index}`,
+        name: node.name || `节点-${index + 1}`,
+        type: node.type,
+        server: node.server,
+        port: node.port,
+        enabled: true,
+        isValid: true,
+        ...node
+      }));
+
+      setParsedNodes(parsedNodes);
+      setSelectedNodes(parsedNodes.map(node => node.id));
+      message.success(`从订阅链接解析到 ${parsedNodes.length} 个节点`);
+
+    } catch (error) {
+      console.error('订阅解析失败:', error);
+      message.error(`订阅解析失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   // 解析单个节点链接
@@ -450,6 +511,37 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
                 解析链接
               </Button>
             </Form.Item>
+          </Form>
+        </TabPane>
+
+        <TabPane tab="订阅链接" key="subscription" icon={<GlobalOutlined />}>
+          <Form form={form} layout="vertical">
+            <Form.Item
+              label="订阅链接"
+              name="subscriptionUrl"
+              help="输入订阅链接，系统将自动获取并解析其中的节点"
+            >
+              <Input
+                placeholder="https://example.com/subscription"
+                suffix={
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={handleParseSubscription}
+                    loading={subscriptionLoading}
+                  >
+                    获取
+                  </Button>
+                }
+              />
+            </Form.Item>
+            <Alert
+              message="订阅链接导入说明"
+              description="支持标准的 V2Ray、Clash 订阅链接。系统会自动获取订阅内容并解析其中的节点信息。"
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
           </Form>
         </TabPane>
 

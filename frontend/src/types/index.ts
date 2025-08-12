@@ -151,3 +151,29 @@ export interface CreateCustomSubscriptionResponse {
   subscription: CustomSubscription;
   url: string;
 }
+
+// 订阅管理相关类型
+export interface Subscription {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  lastUpdate?: string;
+  nodeCount: number;
+  updateInterval: number; // 更新间隔（小时）
+  autoUpdate: boolean;
+  tags?: string[];
+  remark?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSubscriptionRequest {
+  name: string;
+  url: string;
+  enabled?: boolean;
+  updateInterval?: number;
+  autoUpdate?: boolean;
+  tags?: string[];
+  remark?: string;
+}
