@@ -121,9 +121,36 @@ export class NodesRepository {
   // 创建节点
   async createNode(node: ProxyNode): Promise<DbResult<ProxyNode>> {
     try {
+      console.log('Converting node to DB format:', JSON.stringify(node, null, 2));
       const dbNode = Database.proxyNodeToDbNode(node);
+      console.log('Converted DB node:', JSON.stringify(dbNode, null, 2));
       const now = new Date().toISOString();
       
+      // 准备插入参数，确保没有undefined值
+      const insertParams = [
+        dbNode.id, dbNode.name, dbNode.type, dbNode.server, dbNode.port,
+        dbNode.enabled ? 1 : 0, dbNode.tags || null, dbNode.remark || null,
+        dbNode.uuid || null, dbNode.encryption || null, dbNode.flow || null, dbNode.alter_id || null,
+        dbNode.security || null, dbNode.password || null, dbNode.method || null, dbNode.username || null,
+        dbNode.network || null, dbNode.tls === true ? 1 : 0, dbNode.sni || null, dbNode.alpn || null,
+        dbNode.fingerprint || null, dbNode.allow_insecure === true ? 1 : 0,
+        dbNode.ws_path || null, dbNode.ws_headers || null, dbNode.h2_path || null, dbNode.h2_host || null,
+        dbNode.grpc_service_name || null, dbNode.grpc_mode || null, dbNode.plugin || null, dbNode.plugin_opts || null,
+        dbNode.obfs || null, dbNode.obfs_password || null, dbNode.up_mbps || null, dbNode.down_mbps || null,
+        dbNode.auth || null, dbNode.auth_str || null, dbNode.protocol || null,
+        now, now
+      ];
+
+      // 检查是否有undefined值
+      const undefinedIndex = insertParams.findIndex(param => param === undefined);
+      if (undefinedIndex !== -1) {
+        console.error(`Found undefined value at index ${undefinedIndex}:`, insertParams[undefinedIndex]);
+        console.error('All insert params:', insertParams);
+        return { success: false, error: `Undefined value found at parameter index ${undefinedIndex}` };
+      }
+
+      console.log('Insert parameters:', insertParams);
+
       const result = await this.db.execute(
         `INSERT INTO nodes (
           id, name, type, server, port, enabled, tags, remark,
@@ -142,19 +169,7 @@ export class NodesRepository {
           ?, ?, ?, ?, ?, ?, ?,
           0, ?, ?
         )`,
-        [
-          dbNode.id, dbNode.name, dbNode.type, dbNode.server, dbNode.port,
-          dbNode.enabled ? 1 : 0, dbNode.tags || null, dbNode.remark || null,
-          dbNode.uuid || null, dbNode.encryption || null, dbNode.flow || null, dbNode.alter_id || null,
-          dbNode.security || null, dbNode.password || null, dbNode.method || null, dbNode.username || null,
-          dbNode.network || null, dbNode.tls === true ? 1 : 0, dbNode.sni || null, dbNode.alpn || null,
-          dbNode.fingerprint || null, dbNode.allow_insecure === true ? 1 : 0,
-          dbNode.ws_path || null, dbNode.ws_headers || null, dbNode.h2_path || null, dbNode.h2_host || null,
-          dbNode.grpc_service_name || null, dbNode.grpc_mode || null, dbNode.plugin || null, dbNode.plugin_opts || null,
-          dbNode.obfs || null, dbNode.obfs_password || null, dbNode.up_mbps || null, dbNode.down_mbps || null,
-          dbNode.auth || null, dbNode.auth_str || null, dbNode.protocol || null,
-          now, now
-        ]
+        insertParams
       );
 
       if (!result.success) {

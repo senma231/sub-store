@@ -252,23 +252,39 @@ nodesRouter.post('/', async (c) => {
       }, 400);
     }
 
+    // 清理输入数据，移除所有undefined值
+    const cleanBody = JSON.parse(JSON.stringify(body, (key, value) => {
+      return value === undefined ? null : value;
+    }));
+
     // 生成节点 ID 和时间戳
     const now = new Date().toISOString();
     const node: any = {
-      ...body,
-      id: body.id || `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      enabled: body.enabled !== undefined ? body.enabled : true,
+      ...cleanBody,
+      id: cleanBody.id || `node-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      enabled: cleanBody.enabled !== undefined ? cleanBody.enabled : true,
       createdAt: now,
       updatedAt: now,
     };
+
+    // 确保所有字段都不是undefined
+    Object.keys(node).forEach(key => {
+      if (node[key] === undefined) {
+        node[key] = null;
+      }
+    });
 
     let result: any;
 
     if (nodesRepo) {
       // 使用数据库存储
+      console.log('Creating node with data:', JSON.stringify(node, null, 2));
       result = await nodesRepo.createNode(node);
 
       if (!result.success) {
+        console.error('Node creation failed:', result.error);
+        console.error('Node data that failed:', JSON.stringify(node, null, 2));
+
         // 检查是否是重复错误
         if (result.error?.includes('UNIQUE constraint failed')) {
           return c.json({
