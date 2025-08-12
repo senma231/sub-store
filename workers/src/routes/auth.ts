@@ -7,9 +7,12 @@ export const authRouter = new Hono<Env>();
 // 登录
 authRouter.post('/login', async (c) => {
   try {
+    console.log('Login endpoint called');
     const { username, password } = await c.req.json();
+    console.log('Received credentials:', { username, passwordLength: password?.length });
 
     if (!username || !password) {
+      console.log('Missing credentials');
       return c.json({
         success: false,
         error: 'Missing credentials',
@@ -17,90 +20,66 @@ authRouter.post('/login', async (c) => {
       }, 400);
     }
 
-    // 使用数据库验证用户
-    const usersRepo = c.get('usersRepo');
-    console.log('UsersRepo available:', !!usersRepo);
-    if (usersRepo) {
-      try {
-        console.log('Attempting to validate password for user:', username);
-        const validateResult = await usersRepo.validatePassword(username, password);
-        console.log('Validation result:', validateResult);
+    // 简化：直接使用环境变量验证
+    console.log('Checking environment variable auth...');
+    console.log('ADMIN_TOKEN available:', !!c.env.ADMIN_TOKEN);
 
-        if (validateResult.success && validateResult.data) {
-        const user = validateResult.data;
+    if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
+      console.log('Environment variable auth successful');
+
+      try {
         const secret = new TextEncoder().encode(c.env.JWT_SECRET);
+        console.log('JWT_SECRET available:', !!c.env.JWT_SECRET);
 
         const token = await new SignJWT({
-          userId: user.id,
-          username: user.username,
-          role: user.role,
+          userId: 'admin',
+          username: 'admin',
+          role: 'admin',
         })
           .setProtectedHeader({ alg: 'HS256' })
           .setIssuedAt()
           .setExpirationTime('24h')
           .sign(secret);
 
+        console.log('JWT token generated successfully');
+
         return c.json({
           success: true,
           data: {
             token,
             user: {
-              id: user.id,
-              username: user.username,
-              role: user.role,
+              id: 'admin',
+              username: 'admin',
+              role: 'admin',
             },
             expiresIn: 24 * 60 * 60,
           },
           message: 'Login successful',
         });
-      }
-      } catch (dbError) {
-        console.error('Database validation error:', dbError);
-        // 继续到环境变量回退
+      } catch (jwtError) {
+        console.error('JWT generation error:', jwtError);
+        return c.json({
+          success: false,
+          error: 'JWT generation failed',
+          message: 'Token generation error',
+        }, 500);
       }
     }
 
-    // 如果数据库验证失败，回退到环境变量验证（向后兼容）
-    if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
-      const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-
-      const token = await new SignJWT({
-        userId: 'admin',
-        username: 'admin',
-        role: 'admin',
-      })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('24h')
-        .sign(secret);
-
-      return c.json({
-        success: true,
-        data: {
-          token,
-          user: {
-            id: 'admin',
-            username: 'admin',
-            role: 'admin',
-          },
-          expiresIn: 24 * 60 * 60,
-        },
-        message: 'Login successful (fallback)',
-      });
-    }
-    
+    console.log('Invalid credentials');
     return c.json({
       success: false,
       error: 'Invalid credentials',
       message: 'Username or password is incorrect',
     }, 401);
-    
+
   } catch (error) {
     console.error('Login error:', error);
     return c.json({
       success: false,
       error: 'Internal server error',
       message: 'Login failed',
+      debug: error.message,
     }, 500);
   }
 });
