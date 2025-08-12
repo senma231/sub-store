@@ -14,7 +14,10 @@ import {
   Statistic,
   Row,
   Col,
-  Alert
+  Alert,
+  Form,
+  Select,
+  DatePicker
 } from 'antd';
 import {
   CopyOutlined,
@@ -34,6 +37,111 @@ import type { CustomSubscription } from '@/types';
 const { Text } = Typography;
 const { TextArea } = Input;
 
+// 编辑订阅表单组件
+interface EditSubscriptionFormProps {
+  subscription: CustomSubscription;
+  onSubmit: (data: any) => void;
+  loading: boolean;
+  onCancel: () => void;
+}
+
+const EditSubscriptionForm: React.FC<EditSubscriptionFormProps> = ({
+  subscription,
+  onSubmit,
+  loading,
+  onCancel
+}) => {
+  const [form] = Form.useForm();
+
+  const formatOptions = [
+    { label: 'V2Ray', value: 'v2ray' },
+    { label: 'Clash', value: 'clash' },
+    { label: 'Shadowrocket', value: 'shadowrocket' },
+  ];
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const submitData: any = {};
+
+      if (values.name !== subscription.name) {
+        submitData.name = values.name;
+      }
+
+      if (values.format !== subscription.format) {
+        submitData.format = values.format;
+      }
+
+      const newExpiresAt = values.expiresAt ? values.expiresAt.toISOString() : null;
+      if (newExpiresAt !== subscription.expiresAt) {
+        submitData.expiresAt = newExpiresAt;
+      }
+
+      onSubmit(submitData);
+    } catch (error) {
+      console.error('表单验证失败:', error);
+    }
+  };
+
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={{
+        name: subscription.name,
+        format: subscription.format,
+        expiresAt: subscription.expiresAt ? dayjs(subscription.expiresAt) : undefined,
+      }}
+    >
+      <Form.Item
+        label="订阅名称"
+        name="name"
+        rules={[{ required: true, message: '请输入订阅名称' }]}
+      >
+        <Input placeholder="请输入订阅名称" />
+      </Form.Item>
+
+      <Form.Item
+        label="订阅格式"
+        name="format"
+        rules={[{ required: true, message: '请选择订阅格式' }]}
+      >
+        <Select placeholder="请选择订阅格式">
+          {formatOptions.map(option => (
+            <Select.Option key={option.value} value={option.value}>
+              {option.label}
+            </Select.Option>
+          ))}
+        </Select>
+      </Form.Item>
+
+      <Form.Item
+        label="有效期"
+        name="expiresAt"
+        help="留空表示永不过期"
+      >
+        <DatePicker
+          showTime
+          placeholder="选择过期时间（可选）"
+          style={{ width: '100%' }}
+          disabledDate={(current) => current && current < dayjs().endOf('day')}
+        />
+      </Form.Item>
+
+      <Form.Item>
+        <Space>
+          <Button onClick={onCancel}>
+            取消
+          </Button>
+          <Button type="primary" loading={loading} onClick={handleSubmit}>
+            保存
+          </Button>
+        </Space>
+      </Form.Item>
+    </Form>
+  );
+};
+
 interface CustomSubscriptionManagerProps {
   className?: string;
 }
@@ -44,6 +152,7 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
   const [selectedSubscription, setSelectedSubscription] = useState<CustomSubscription | null>(null);
   const [qrCodeVisible, setQrCodeVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -60,6 +169,25 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
       });
       const result = await response.json();
       return result.data || [];
+    },
+  });
+
+  // 更新自定义订阅
+  const updateMutation = useMutation({
+    mutationFn: async ({ uuid, data }: { uuid: string; data: any }) => {
+      const { customSubscriptionService } = await import('@/services/customSubscriptionService');
+      return customSubscriptionService.updateCustomSubscription(uuid, data);
+    },
+    onSuccess: () => {
+      message.success('自定义订阅更新成功');
+      queryClient.invalidateQueries({ queryKey: ['custom-subscriptions'] });
+      setEditModalVisible(false);
+      setSelectedSubscription(null);
+    },
+    onError: (error: any) => {
+      console.error('更新自定义订阅失败:', error);
+      const errorMessage = error.response?.data?.message || error.message || '更新失败';
+      message.error(`更新失败: ${errorMessage}`);
     },
   });
 
@@ -115,8 +243,7 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
   // 编辑订阅
   const handleEdit = (subscription: CustomSubscription) => {
     setSelectedSubscription(subscription);
-    // TODO: 实现编辑功能
-    console.log('Edit subscription:', subscription);
+    setEditModalVisible(true);
   };
 
   // 表格列定义
@@ -381,6 +508,30 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
               </Button>
             </div>
           </Space>
+        )}
+      </Modal>
+
+      {/* 编辑模态框 */}
+      <Modal
+        title="编辑自定义订阅"
+        open={editModalVisible}
+        onCancel={() => {
+          setEditModalVisible(false);
+          setSelectedSubscription(null);
+        }}
+        footer={null}
+        width={600}
+      >
+        {selectedSubscription && (
+          <EditSubscriptionForm
+            subscription={selectedSubscription}
+            onSubmit={(data) => updateMutation.mutate({ uuid: selectedSubscription.uuid, data })}
+            loading={updateMutation.isPending}
+            onCancel={() => {
+              setEditModalVisible(false);
+              setSelectedSubscription(null);
+            }}
+          />
         )}
       </Modal>
     </div>

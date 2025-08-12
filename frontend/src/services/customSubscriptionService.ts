@@ -28,6 +28,11 @@ export const customSubscriptionService = {
     return apiClient.get(`/api/subscriptions/${uuid}`);
   },
 
+  // 更新自定义订阅
+  updateCustomSubscription: async (uuid: string, data: Partial<CreateCustomSubscriptionRequest>): Promise<{ subscription: CustomSubscription }> => {
+    return apiClient.put(`/api/subscriptions/${uuid}`, data);
+  },
+
   // 删除自定义订阅
   deleteCustomSubscription: async (uuid: string): Promise<{ uuid: string }> => {
     return apiClient.delete(`/api/subscriptions/${uuid}`);

@@ -523,3 +523,111 @@ function convertToYaml(obj: any, indent = 0): string {
 
   return yaml;
 }
+
+// 更新自定义订阅
+customSubscriptionsRouter.put('/:uuid', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+    const body = await c.req.json();
+    const nodesRepo = c.get('nodesRepo') as NodesRepository;
+    const customSubsRepo = c.get('customSubsRepo') as CustomSubscriptionsRepository;
+
+    // 验证订阅是否存在
+    const existingResult = await customSubsRepo.getByUuid(uuid);
+    if (!existingResult.success || !existingResult.data) {
+      return c.json({
+        success: false,
+        error: 'Not Found',
+        message: 'Custom subscription not found',
+      }, 404);
+    }
+
+    // 验证请求数据
+    const updates: any = {};
+
+    if (body.name !== undefined) {
+      if (!body.name || typeof body.name !== 'string') {
+        return c.json({
+          success: false,
+          error: 'Validation Error',
+          message: 'Name must be a non-empty string',
+        }, 400);
+      }
+      updates.name = body.name;
+    }
+
+    if (body.nodeIds !== undefined) {
+      if (!Array.isArray(body.nodeIds)) {
+        return c.json({
+          success: false,
+          error: 'Validation Error',
+          message: 'NodeIds must be an array',
+        }, 400);
+      }
+
+      // 验证节点ID
+      const validNodeIds = [];
+      for (const nodeId of body.nodeIds) {
+        const result = await nodesRepo.getNodeById(nodeId);
+        if (result.success && result.data && result.data.enabled) {
+          validNodeIds.push(nodeId);
+        }
+      }
+
+      if (validNodeIds.length === 0) {
+        return c.json({
+          success: false,
+          error: 'Validation Error',
+          message: 'No valid node IDs provided',
+        }, 400);
+      }
+
+      updates.nodeIds = validNodeIds;
+    }
+
+    if (body.format !== undefined) {
+      const supportedFormats = ['v2ray', 'clash', 'shadowrocket'];
+      if (!supportedFormats.includes(body.format)) {
+        return c.json({
+          success: false,
+          error: 'Validation Error',
+          message: `Unsupported format: ${body.format}. Supported: ${supportedFormats.join(', ')}`,
+        }, 400);
+      }
+      updates.format = body.format;
+    }
+
+    if (body.expiresAt !== undefined) {
+      updates.expiresAt = body.expiresAt || null;
+    }
+
+    // 更新订阅
+    const result = await customSubsRepo.update(uuid, updates);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Database error',
+        message: result.error,
+      }, 500);
+    }
+
+    const subscription = result.data;
+
+    return c.json({
+      success: true,
+      data: {
+        subscription,
+        message: 'Custom subscription updated successfully',
+      },
+    });
+
+  } catch (error) {
+    console.error('Update custom subscription error:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to update custom subscription',
+    }, 500);
+  }
+});

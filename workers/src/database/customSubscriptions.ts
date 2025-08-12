@@ -271,4 +271,56 @@ export class CustomSubscriptionsRepository {
 
     return this.db.execute(sql, [now, uuid]);
   }
+
+  // 更新自定义订阅
+  async update(uuid: string, updates: Partial<Pick<CustomSubscription, 'name' | 'nodeIds' | 'format' | 'expiresAt'>>): Promise<DbResult<CustomSubscription>> {
+    const now = new Date().toISOString();
+
+    // 构建更新字段
+    const updateFields = [];
+    const updateValues = [];
+
+    if (updates.name !== undefined) {
+      updateFields.push('name = ?');
+      updateValues.push(updates.name);
+    }
+
+    if (updates.nodeIds !== undefined) {
+      updateFields.push('node_ids = ?');
+      updateValues.push(JSON.stringify(updates.nodeIds));
+    }
+
+    if (updates.format !== undefined) {
+      updateFields.push('format = ?');
+      updateValues.push(updates.format);
+    }
+
+    if (updates.expiresAt !== undefined) {
+      updateFields.push('expires_at = ?');
+      updateValues.push(updates.expiresAt || null);
+    }
+
+    if (updateFields.length === 0) {
+      return { success: false, error: 'No fields to update' };
+    }
+
+    updateFields.push('updated_at = ?');
+    updateValues.push(now);
+    updateValues.push(uuid);
+
+    const sql = `
+      UPDATE custom_subscriptions
+      SET ${updateFields.join(', ')}
+      WHERE uuid = ?
+    `;
+
+    const result = await this.db.execute(sql, updateValues);
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    // 返回更新后的数据
+    return this.getByUuid(uuid);
+  }
 }
