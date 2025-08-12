@@ -21,11 +21,12 @@ authRouter.post('/login', async (c) => {
     const usersRepo = c.get('usersRepo');
     console.log('UsersRepo available:', !!usersRepo);
     if (usersRepo) {
-      console.log('Attempting to validate password for user:', username);
-      const validateResult = await usersRepo.validatePassword(username, password);
-      console.log('Validation result:', validateResult);
+      try {
+        console.log('Attempting to validate password for user:', username);
+        const validateResult = await usersRepo.validatePassword(username, password);
+        console.log('Validation result:', validateResult);
 
-      if (validateResult.success && validateResult.data) {
+        if (validateResult.success && validateResult.data) {
         const user = validateResult.data;
         const secret = new TextEncoder().encode(c.env.JWT_SECRET);
 
@@ -52,6 +53,10 @@ authRouter.post('/login', async (c) => {
           },
           message: 'Login successful',
         });
+      }
+      } catch (dbError) {
+        console.error('Database validation error:', dbError);
+        // 继续到环境变量回退
       }
     }
 
