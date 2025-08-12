@@ -151,7 +151,7 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       }));
 
       setParsedNodes(parsedNodes);
-      setSelectedNodes(parsedNodes.map(node => node.id));
+      setSelectedNodes(parsedNodes.map((node: ParsedNode) => node.id));
       message.success(`从订阅链接解析到 ${parsedNodes.length} 个节点`);
 
     } catch (error) {
