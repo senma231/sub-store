@@ -291,13 +291,6 @@ nodesRouter.post('/', async (c) => {
       }, 503);
     }
 
-      const createdNode = addNode(node);
-      result = {
-        success: true,
-        data: createdNode
-      };
-    }
-
     return c.json({
       success: true,
       data: result.data,

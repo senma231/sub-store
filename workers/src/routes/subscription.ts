@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../index';
 import { generateCustomSubscriptionContent } from './customSubscriptions';
-import { getCustomSubscription, updateSubscriptionAccess } from '../data/customSubscriptions';
+// 移除已删除的customSubscriptions文件引用
 
 // 简化的节点类型
 interface SimpleNode {
@@ -210,11 +210,10 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     const uuid = c.req.param('uuid');
     console.log('Accessing custom subscription with UUID:', uuid);
 
-    // 首先尝试从内存获取
-    let subscription = getCustomSubscription(uuid);
-    console.log('Found subscription in memory:', subscription ? 'YES' : 'NO');
+    // 尝试从自定义订阅API获取
+    let subscription = null;
+    console.log('Trying to get subscription from API...');
 
-    // 如果内存中没有，尝试从自定义订阅API获取
     if (!subscription) {
       try {
         console.log('Trying to fetch subscription from API...');
