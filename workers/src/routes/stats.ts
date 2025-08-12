@@ -8,11 +8,23 @@ export const statsRouter = new Hono<{ Bindings: Env }>();
 // 获取统计信息
 statsRouter.get('/', async (c) => {
   try {
-    // 使用实际的内存节点数据
-    const { memoryNodes } = await import('../data/memoryNodes');
-    const nodes = memoryNodes;
+    const nodesRepo = c.get('nodesRepo');
+    const statsRepo = c.get('statsRepo');
 
-    // 模拟订阅统计
+    let totalNodes = 0;
+    let activeNodes = 0;
+
+    // 从数据库获取节点统计
+    if (nodesRepo) {
+      const nodesResult = await nodesRepo.getNodes({ page: 1, limit: 1000 });
+      if (nodesResult.success && nodesResult.data) {
+        const nodes = nodesResult.data.items || [];
+        totalNodes = nodesResult.data.total || 0;
+        activeNodes = nodes.filter((node: any) => node.enabled).length;
+      }
+    }
+
+    // 模拟订阅统计（可以后续从数据库获取真实数据）
     const totalStats = {
       totalRequests: 1250,
       formatStats: {
@@ -33,17 +45,8 @@ statsRouter.get('/', async (c) => {
       requestsByDate[dateStr] = Math.floor(Math.random() * 100) + 50;
     }
 
-    // 统计节点类型
-    const nodeTypeStats = nodes.reduce((stats: Record<string, number>, node: any) => {
-      stats[node.type] = (stats[node.type] || 0) + 1;
-      return stats;
-    }, {});
-
-    // 统计活跃节点
-    const activeNodes = nodes.filter((node: any) => node.enabled).length;
-
     const statistics = {
-      totalNodes: nodes.length,
+      totalNodes,
       totalSubscriptions: 1, // 简化实现
       totalRequests: totalStats.totalRequests,
       activeNodes,
@@ -73,9 +76,20 @@ statsRouter.get('/detailed', async (c) => {
     const days = parseInt(c.req.query('days') || '30');
     const maxDays = Math.min(days, 90); // 最多90天
 
-    // 使用实际的内存节点数据
-    const { memoryNodes } = await import('../data/memoryNodes');
-    const nodes = memoryNodes;
+    const nodesRepo = c.get('nodesRepo');
+    const statsRepo = c.get('statsRepo');
+
+    let nodes: any[] = [];
+    let totalNodes = 0;
+
+    // 从数据库获取节点数据
+    if (nodesRepo) {
+      const nodesResult = await nodesRepo.getNodes({ page: 1, limit: 1000 });
+      if (nodesResult.success && nodesResult.data) {
+        nodes = nodesResult.data.items || [];
+        totalNodes = nodesResult.data.total || 0;
+      }
+    }
 
     // 生成模拟的指定天数统计
     const dailyStats = [];
