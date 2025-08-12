@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { SubscriptionsRepository } from '../database/subscriptions';
+import { parseSubscriptionContent } from '../utils/subscriptionParser';
 
 export const subscriptionsRouter = new Hono<{ Bindings: Env }>();
 
@@ -323,6 +324,69 @@ subscriptionsRouter.post('/:id/update', async (c) => {
       success: false,
       error: 'Internal Server Error',
       message: 'Failed to update subscription content',
+    }, 500);
+  }
+});
+
+// 解析订阅链接内容
+subscriptionsRouter.post('/parse', async (c) => {
+  try {
+    const body = await c.req.json();
+
+    if (!body.url) {
+      return c.json({
+        success: false,
+        error: 'Validation Error',
+        message: 'URL is required',
+      }, 400);
+    }
+
+    // 验证URL格式
+    try {
+      new URL(body.url);
+    } catch {
+      return c.json({
+        success: false,
+        error: 'Validation Error',
+        message: 'Invalid URL format',
+      }, 400);
+    }
+
+    // 获取订阅内容
+    const response = await fetch(body.url, {
+      headers: {
+        'User-Agent': 'Sub-Store/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      return c.json({
+        success: false,
+        error: 'Fetch Error',
+        message: `Failed to fetch subscription: ${response.status} ${response.statusText}`,
+      }, 400);
+    }
+
+    const content = await response.text();
+
+    // 解析订阅内容
+    const nodes = parseSubscriptionContent(content);
+
+    return c.json({
+      success: true,
+      data: {
+        nodes,
+        count: nodes.length,
+      },
+      message: `Successfully parsed ${nodes.length} nodes`,
+    });
+
+  } catch (error) {
+    console.error('Parse subscription error:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to parse subscription',
     }, 500);
   }
 });

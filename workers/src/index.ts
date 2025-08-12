@@ -171,6 +171,7 @@ app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
 app.route('/api/subscriptions', customSubscriptionsRouter);
+app.route('/api/subscription', subscriptionsRouter); // 订阅解析和管理
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 
 // 根路径
