@@ -35,8 +35,11 @@ const getNodesFromDatabase = async (nodesRepo: any, nodeIds?: string[]) => {
       return nodes;
     } else {
       // 获取所有启用的节点
-      const result = await nodesRepo.getNodes(1, 1000, { enabled: true });
-      return result.data || [];
+      const result = await nodesRepo.getNodes({ page: 1, limit: 1000, enabled: true });
+      if (result.success && result.data) {
+        return result.data.items || [];
+      }
+      return [];
     }
   } catch (error) {
     console.error('Failed to load nodes from database:', error);
@@ -95,8 +98,15 @@ subscriptionRouter.get('/:format/info', async (c) => {
     }
 
     const nodesRepo = c.get('nodesRepo');
-    const allNodesResult = await nodesRepo.getNodes(1, 1000);
-    const allNodes = allNodesResult.data || [];
+    let allNodes: any[] = [];
+
+    if (nodesRepo) {
+      const allNodesResult = await nodesRepo.getNodes({ page: 1, limit: 1000 });
+      if (allNodesResult.success && allNodesResult.data) {
+        allNodes = allNodesResult.data.items || [];
+      }
+    }
+
     const enabledNodes = allNodes.filter(node => node.enabled);
 
     // 统计节点类型
@@ -160,8 +170,14 @@ subscriptionRouter.get('/', async (c) => {
 
   // 获取实际节点数据用于统计
   const nodesRepo = c.get('nodesRepo');
-  const allNodesResult = await nodesRepo.getNodes(1, 1000);
-  const allNodes = allNodesResult.data || [];
+  let allNodes: any[] = [];
+
+  if (nodesRepo) {
+    const allNodesResult = await nodesRepo.getNodes({ page: 1, limit: 1000 });
+    if (allNodesResult.success && allNodesResult.data) {
+      allNodes = allNodesResult.data.items || [];
+    }
+  }
 
   return c.json({
     success: true,
