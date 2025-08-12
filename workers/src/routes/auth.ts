@@ -19,8 +19,11 @@ authRouter.post('/login', async (c) => {
 
     // 使用数据库验证用户
     const usersRepo = c.get('usersRepo');
+    console.log('UsersRepo available:', !!usersRepo);
     if (usersRepo) {
+      console.log('Attempting to validate password for user:', username);
       const validateResult = await usersRepo.validatePassword(username, password);
+      console.log('Validation result:', validateResult);
 
       if (validateResult.success && validateResult.data) {
         const user = validateResult.data;
