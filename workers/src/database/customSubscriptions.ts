@@ -259,4 +259,16 @@ export class CustomSubscriptionsRepository {
       }
     };
   }
+
+  // 更新访问计数
+  async updateAccessCount(uuid: string): Promise<DbResult<void>> {
+    const now = new Date().toISOString();
+    const sql = `
+      UPDATE custom_subscriptions
+      SET access_count = access_count + 1, last_access_at = ?
+      WHERE uuid = ?
+    `;
+
+    return this.db.execute(sql, [now, uuid]);
+  }
 }

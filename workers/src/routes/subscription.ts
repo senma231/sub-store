@@ -210,42 +210,27 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     const uuid = c.req.param('uuid');
     console.log('Accessing custom subscription with UUID:', uuid);
 
-    // 尝试从自定义订阅API获取
-    let subscription = null;
-    console.log('Trying to get subscription from API...');
-
-    if (!subscription) {
-      try {
-        console.log('Trying to fetch subscription from API...');
-        const apiUrl = new URL(c.req.url);
-
-        // 尝试多种认证方式
-        const authHeaders = [
-          c.req.header('Authorization'),
-          `Admin ${c.env.ADMIN_TOKEN}`,
-        ].filter(Boolean);
-
-        for (const authHeader of authHeaders) {
-          const apiResponse = await fetch(`${apiUrl.origin}/api/subscriptions/${uuid}`, {
-            headers: { 'Authorization': authHeader }
-          });
-
-          if (apiResponse.ok) {
-            const apiResult = await apiResponse.json();
-            if (apiResult.success && apiResult.data.subscription) {
-              subscription = apiResult.data.subscription;
-              console.log('Found subscription via API with auth:', authHeader.substring(0, 20) + '...');
-              break;
-            }
-          }
-        }
-      } catch (apiError) {
-        console.log('API fetch failed:', apiError);
-      }
+    // 直接从数据库获取订阅数据
+    const customSubsRepo = c.get('customSubsRepo');
+    if (!customSubsRepo) {
+      console.error('CustomSubscriptionsRepository not available');
+      return c.text('Service unavailable', 503);
     }
 
-    if (!subscription) {
+    const result = await customSubsRepo.getByUuid(uuid);
+    if (!result.success || !result.data) {
+      console.log('Custom subscription not found:', uuid);
       return c.text('Custom subscription not found', 404);
+    }
+
+    const subscription = result.data;
+    console.log('Found subscription:', subscription.name);
+
+    // 更新访问计数
+    try {
+      await customSubsRepo.updateAccessCount(uuid);
+    } catch (error) {
+      console.warn('Failed to update access count:', error);
     }
 
     // 检查是否过期
