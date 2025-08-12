@@ -273,11 +273,18 @@ subscriptionsRouter.post('/:id/update', async (c) => {
 
     const subscription = subResult.data;
 
-    // 获取订阅内容
+    // 获取订阅内容 - 使用浏览器请求头避免被拦截
     const response = await fetch(subscription.url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Sub-Store/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/plain, text/html, application/json, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       },
+      redirect: 'follow',
     });
 
     if (!response.ok) {
@@ -352,11 +359,18 @@ subscriptionsRouter.post('/parse', async (c) => {
       }, 400);
     }
 
-    // 获取订阅内容
+    // 获取订阅内容 - 使用浏览器请求头避免被拦截
     const response = await fetch(body.url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Sub-Store/1.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/plain, text/html, application/json, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       },
+      redirect: 'follow',
     });
 
     if (!response.ok) {
