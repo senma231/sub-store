@@ -17,7 +17,9 @@ import {
   Alert,
   Form,
   Select,
-  DatePicker
+  DatePicker,
+  Transfer,
+  Spin
 } from 'antd';
 import {
   CopyOutlined,
@@ -53,6 +55,15 @@ const EditSubscriptionForm: React.FC<EditSubscriptionFormProps> = ({
 }) => {
   const [form] = Form.useForm();
 
+  // 获取所有节点列表
+  const { data: nodesData, isLoading: nodesLoading } = useQuery({
+    queryKey: ['nodes-for-edit'],
+    queryFn: async () => {
+      const { nodeService } = await import('@/services/nodeService');
+      return nodeService.getNodes({ limit: 1000, enabled: true });
+    },
+  });
+
   const formatOptions = [
     { label: 'V2Ray', value: 'v2ray' },
     { label: 'Clash', value: 'clash' },
@@ -77,11 +88,40 @@ const EditSubscriptionForm: React.FC<EditSubscriptionFormProps> = ({
         submitData.expiresAt = newExpiresAt;
       }
 
+      // 检查节点ID是否有变化
+      const newNodeIds = values.nodeIds || [];
+      const currentNodeIds = subscription.nodeIds || [];
+      const nodeIdsChanged =
+        newNodeIds.length !== currentNodeIds.length ||
+        newNodeIds.some((id: string) => !currentNodeIds.includes(id));
+
+      if (nodeIdsChanged) {
+        submitData.nodeIds = newNodeIds;
+      }
+
       onSubmit(submitData);
     } catch (error) {
       console.error('表单验证失败:', error);
     }
   };
+
+  // 准备节点数据用于Transfer组件
+  const allNodes = nodesData?.items || [];
+  const transferDataSource = allNodes.map(node => ({
+    key: node.id,
+    title: `${node.name} (${node.type.toUpperCase()})`,
+    description: `${node.server}:${node.port}`,
+    disabled: !node.enabled,
+  }));
+
+  if (nodesLoading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16 }}>加载节点列表...</div>
+      </div>
+    );
+  }
 
   return (
     <Form
@@ -91,6 +131,7 @@ const EditSubscriptionForm: React.FC<EditSubscriptionFormProps> = ({
         name: subscription.name,
         format: subscription.format,
         expiresAt: subscription.expiresAt ? dayjs(subscription.expiresAt) : undefined,
+        nodeIds: subscription.nodeIds || [],
       }}
     >
       <Form.Item
@@ -113,6 +154,32 @@ const EditSubscriptionForm: React.FC<EditSubscriptionFormProps> = ({
             </Select.Option>
           ))}
         </Select>
+      </Form.Item>
+
+      <Form.Item
+        label="选择节点"
+        name="nodeIds"
+        rules={[{ required: true, message: '请至少选择一个节点' }]}
+        help={`当前已选择 ${subscription.nodeIds?.length || 0} 个节点`}
+      >
+        <Transfer
+          dataSource={transferDataSource}
+          targetKeys={subscription.nodeIds || []}
+          onChange={(targetKeys) => {
+            form.setFieldsValue({ nodeIds: targetKeys });
+          }}
+          render={item => item.title}
+          titles={['可用节点', '已选节点']}
+          showSearch
+          filterOption={(inputValue, option) =>
+            option.title.toLowerCase().includes(inputValue.toLowerCase()) ||
+            option.description.toLowerCase().includes(inputValue.toLowerCase())
+          }
+          listStyle={{
+            width: 250,
+            height: 300,
+          }}
+        />
       </Form.Item>
 
       <Form.Item
