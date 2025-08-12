@@ -81,11 +81,11 @@ export class CustomSubscriptionsRepository {
       name: subscription.name,
       node_ids: JSON.stringify(subscription.nodeIds),
       format: subscription.format,
-      expires_at: subscription.expiresAt,
+      expires_at: subscription.expiresAt || null,
       created_at: now,
       updated_at: now,
       access_count: 0,
-      last_access_at: undefined,
+      last_access_at: null,
     };
 
     const sql = `

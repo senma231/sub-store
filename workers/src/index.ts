@@ -10,6 +10,7 @@ import { NodesRepository } from './database/nodes';
 import { AuthRepository } from './database/auth';
 import { StatsRepository } from './database/stats';
 import { UsersRepository } from './repositories/UsersRepository';
+import { CustomSubscriptionsRepository } from './database/customSubscriptions';
 
 import { nodesRouter } from './routes/nodes';
 import { subscriptionRouter } from './routes/subscription';
@@ -55,12 +56,14 @@ app.use('*', async (c, next) => {
       const authRepo = new AuthRepository(db);
       const statsRepo = new StatsRepository(db);
       const usersRepo = new UsersRepository(c.env.DB);
+      const customSubsRepo = new CustomSubscriptionsRepository(db);
 
       c.set('db', db);
       c.set('nodesRepo', nodesRepo);
       c.set('authRepo', authRepo);
       c.set('statsRepo', statsRepo);
       c.set('usersRepo', usersRepo);
+      c.set('customSubsRepo', customSubsRepo);
 
       // 在第一次请求时初始化数据库
       if (!globalThis.dbInitialized) {
