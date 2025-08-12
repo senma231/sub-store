@@ -3,14 +3,12 @@ import { Env, SimpleNode } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { NodesRepository } from '../database/nodes';
 import { Database } from '../database';
+import { memoryNodes } from '../data/memoryNodes';
 
 export const nodesRouter = new Hono<{ Bindings: Env }>();
 
 // 应用认证中间件到所有路由
 nodesRouter.use('*', authMiddleware);
-
-// 内存存储作为回退
-const memoryNodes: any[] = [];
 
 // 内存存储辅助函数
 function addNode(node: any): any {
