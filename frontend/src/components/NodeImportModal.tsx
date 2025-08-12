@@ -113,12 +113,11 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
 
     setSubscriptionLoading(true);
     try {
-      // 通过代理获取订阅内容
+      // 通过代理获取订阅内容 (无需认证)
       const response = await fetch('/api/subscription/parse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify({ url: subscriptionUrl }),
       });

@@ -163,6 +163,9 @@ app.route('/health', healthRouter);
 // 订阅路由 (无需认证，但有速率限制)
 app.route('/sub', subscriptionRouter);
 
+// 订阅解析路由 (无需认证，用于前端解析订阅链接)
+app.route('/api/subscription', subscriptionsRouter);
+
 // 认证路由
 app.route('/auth', authRouter);
 
@@ -171,7 +174,6 @@ app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
 app.route('/api/subscriptions', customSubscriptionsRouter);
-app.route('/api/subscription', subscriptionsRouter); // 订阅解析和管理
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 
 // 根路径
