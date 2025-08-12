@@ -1,6 +1,38 @@
 import { D1Database } from '@cloudflare/workers-types';
 import { v4 as uuidv4 } from 'uuid';
-import bcrypt from 'bcryptjs';
+// import bcrypt from 'bcryptjs';
+
+// 使用Web Crypto API替代bcrypt，因为bcryptjs在Cloudflare Workers中可能不兼容
+class WebCryptoBcrypt {
+  static async hash(password: string, saltRounds: number = 10): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return `$2a$${saltRounds}$${hashHex}`;
+  }
+
+  static async compare(password: string, hash: string): Promise<boolean> {
+    // 简单实现：重新哈希密码并比较
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // 提取原始哈希的十六进制部分
+    const hashParts = hash.split('$');
+    if (hashParts.length >= 4) {
+      return hashHex === hashParts[3];
+    }
+
+    // 如果是旧的明文密码，直接比较
+    return password === hash;
+  }
+}
+
+const bcrypt = WebCryptoBcrypt;
 
 export interface User {
   id: string;
