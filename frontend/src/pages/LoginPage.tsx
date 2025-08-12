@@ -120,18 +120,7 @@ const LoginPage: React.FC = () => {
           </Form.Item>
         </Form>
 
-        <Alert
-          message="默认管理员账户"
-          description={
-            <Space direction="vertical" size={4}>
-              <Text>用户名: admin</Text>
-              <Text>密码: 请查看环境变量 ADMIN_TOKEN</Text>
-            </Space>
-          }
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
+
 
         <Divider>功能特性</Divider>
 

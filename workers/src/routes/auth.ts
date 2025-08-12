@@ -8,7 +8,7 @@ export const authRouter = new Hono<Env>();
 authRouter.post('/login', async (c) => {
   try {
     const { username, password } = await c.req.json();
-    
+
     if (!username || !password) {
       return c.json({
         success: false,
@@ -16,8 +16,43 @@ authRouter.post('/login', async (c) => {
         message: 'Username and password are required',
       }, 400);
     }
-    
-    // 验证管理员凭据
+
+    // 使用数据库验证用户
+    const usersRepo = c.get('usersRepo');
+    if (usersRepo) {
+      const validateResult = await usersRepo.validatePassword(username, password);
+
+      if (validateResult.success && validateResult.data) {
+        const user = validateResult.data;
+        const secret = new TextEncoder().encode(c.env.JWT_SECRET);
+
+        const token = await new SignJWT({
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+        })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setIssuedAt()
+          .setExpirationTime('24h')
+          .sign(secret);
+
+        return c.json({
+          success: true,
+          data: {
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+            },
+            expiresIn: 24 * 60 * 60,
+          },
+          message: 'Login successful',
+        });
+      }
+    }
+
+    // 如果数据库验证失败，回退到环境变量验证（向后兼容）
     if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
       const secret = new TextEncoder().encode(c.env.JWT_SECRET);
 
@@ -30,7 +65,7 @@ authRouter.post('/login', async (c) => {
         .setIssuedAt()
         .setExpirationTime('24h')
         .sign(secret);
-      
+
       return c.json({
         success: true,
         data: {
@@ -42,51 +77,8 @@ authRouter.post('/login', async (c) => {
           },
           expiresIn: 24 * 60 * 60,
         },
-        message: 'Login successful',
+        message: 'Login successful (fallback)',
       });
-    }
-    
-    // 检查其他用户 (从数据库)
-    if (c.env.DB) {
-      try {
-        const authRepo = c.get('authRepo');
-        const userResult = await authRepo.getUserByUsername(username);
-
-        if (userResult.success && userResult.data && userResult.data.password === password) {
-          const user = userResult.data;
-          const secret = new TextEncoder().encode(c.env.JWT_SECRET);
-
-          const token = await new SignJWT({
-            userId: user.id,
-            username: user.username,
-            role: user.role || 'user',
-          })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setIssuedAt()
-            .setExpirationTime('24h')
-            .sign(secret);
-
-          // 更新最后登录时间
-          await authRepo.updateLastLogin(user.id);
-
-          return c.json({
-            success: true,
-            data: {
-              token,
-              user: {
-                id: user.id,
-                username: user.username,
-                role: user.role || 'user',
-              },
-              expiresIn: 24 * 60 * 60,
-            },
-            message: 'Login successful',
-          });
-        }
-      } catch (dbError) {
-        console.warn('Database user lookup failed:', dbError);
-        // 继续执行，返回无效凭据错误
-      }
     }
     
     return c.json({
@@ -252,39 +244,22 @@ authRouter.post('/change-password', async (c) => {
       }, 400);
     }
 
-    // 管理员密码修改需要特殊处理
-    if (payload.username === 'admin') {
-      return c.json({
-        success: false,
-        error: 'Not allowed',
-        message: 'Admin password cannot be changed via API',
-      }, 403);
-    }
-
-    // 修改普通用户密码 (使用数据库)
-    if (c.env.DB) {
+    // 使用数据库修改密码
+    const usersRepo = c.get('usersRepo');
+    if (usersRepo) {
       try {
-        const authRepo = c.get('authRepo');
-        const userResult = await authRepo.getUserById(payload.userId as string);
+        const changeResult = await usersRepo.changePassword(payload.userId as string, {
+          currentPassword,
+          newPassword
+        });
 
-        if (!userResult.success || !userResult.data) {
+        if (!changeResult.success) {
           return c.json({
             success: false,
-            error: 'User not found',
-            message: 'User does not exist',
-          }, 404);
-        }
-
-        const user = userResult.data;
-        if (user.password !== currentPassword) {
-          return c.json({
-            success: false,
-            error: 'Invalid password',
-            message: 'Current password is incorrect',
+            error: 'Password change failed',
+            message: changeResult.error || 'Failed to change password',
           }, 400);
         }
-
-        await authRepo.updateUserPassword(user.id, newPassword);
 
         return c.json({
           success: true,

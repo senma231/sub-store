@@ -9,6 +9,7 @@ import { Database } from './database';
 import { NodesRepository } from './database/nodes';
 import { AuthRepository } from './database/auth';
 import { StatsRepository } from './database/stats';
+import { UsersRepository } from './repositories/UsersRepository';
 
 import { nodesRouter } from './routes/nodes';
 import { subscriptionRouter } from './routes/subscription';
@@ -37,6 +38,7 @@ declare module 'hono' {
     nodesRepo: NodesRepository | null;
     authRepo: AuthRepository | null;
     statsRepo: StatsRepository | null;
+    usersRepo: UsersRepository | null;
     user: { id: string; username: string; role: string };
   }
 }
@@ -52,17 +54,25 @@ app.use('*', async (c, next) => {
       const nodesRepo = new NodesRepository(db);
       const authRepo = new AuthRepository(db);
       const statsRepo = new StatsRepository(db);
+      const usersRepo = new UsersRepository(c.env.DB);
 
       c.set('db', db);
       c.set('nodesRepo', nodesRepo);
       c.set('authRepo', authRepo);
       c.set('statsRepo', statsRepo);
+      c.set('usersRepo', usersRepo);
 
       // 在第一次请求时初始化数据库
       if (!globalThis.dbInitialized) {
         try {
           const { initializeDatabase } = await import('./database/init');
           await initializeDatabase(db);
+
+          // 初始化默认管理员用户
+          if (c.env.ADMIN_TOKEN) {
+            await usersRepo.initializeDefaultAdmin(c.env.ADMIN_TOKEN);
+          }
+
           globalThis.dbInitialized = true;
           console.log('Database initialized successfully');
         } catch (error) {
@@ -77,6 +87,7 @@ app.use('*', async (c, next) => {
       c.set('nodesRepo', null);
       c.set('authRepo', null);
       c.set('statsRepo', null);
+      c.set('usersRepo', null);
     }
 
     await next();

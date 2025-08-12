@@ -147,7 +147,16 @@ const SubscriptionsPage: React.FC = () => {
                     onClick={() => setSelectedFormat(format.format)}
                     style={{
                       border: selectedFormat === format.format ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      height: '120px',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
+                    bodyStyle={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
                     }}
                   >
                     <div style={{ textAlign: 'center' }}>

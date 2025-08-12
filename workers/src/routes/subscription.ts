@@ -63,7 +63,15 @@ subscriptionRouter.get('/:format', async (c) => {
     const enabledNodes = await getNodesFromDatabase(nodesRepo);
 
     if (enabledNodes.length === 0) {
-      return c.text('No enabled nodes found', 404);
+      // 返回一个空的但有效的订阅内容，而不是404
+      const emptyContent = generateEmptySubscriptionContent(format);
+      return c.text(emptyContent, 200, {
+        'Content-Type': format === 'clash' ? 'application/yaml' : 'text/plain',
+        'Content-Disposition': `attachment; filename="empty-${format}.${format === 'clash' ? 'yaml' : 'txt'}"`,
+        'Subscription-Userinfo': 'upload=0; download=0; total=0; expire=0',
+        'Profile-Title': 'Sub-Store Subscription (Empty)',
+        'Profile-Update-Interval': '24',
+      });
     }
 
     // 生成订阅内容
@@ -238,10 +246,6 @@ subscriptionRouter.get('/custom/:uuid', async (c) => {
     }
 
     if (!subscription) {
-      // 添加调试信息
-      const { getAllCustomSubscriptions } = await import('../data/customSubscriptions');
-      const allSubscriptions = getAllCustomSubscriptions();
-      console.log('Available subscriptions:', allSubscriptions.map(s => s.uuid));
       return c.text('Custom subscription not found', 404);
     }
 
@@ -596,4 +600,39 @@ function convertToYaml(obj: any, indent = 0): string {
   }
 
   return yaml;
+}
+
+// 生成空订阅内容的函数
+function generateEmptySubscriptionContent(format: string): string {
+  switch (format) {
+    case 'v2ray':
+    case 'shadowrocket':
+      return '# Sub-Store 订阅\n# 当前没有可用的节点\n# 请先添加节点后再生成订阅\n';
+
+    case 'clash':
+      return `# Sub-Store Clash 配置
+# 当前没有可用的节点，请先添加节点后再生成订阅
+
+port: 7890
+socks-port: 7891
+allow-lan: false
+mode: Rule
+log-level: info
+external-controller: 127.0.0.1:9090
+
+proxies: []
+
+proxy-groups:
+  - name: "🚀 节点选择"
+    type: select
+    proxies:
+      - DIRECT
+
+rules:
+  - MATCH,🚀 节点选择
+`;
+
+    default:
+      return '# 当前没有可用的节点\n';
+  }
 }

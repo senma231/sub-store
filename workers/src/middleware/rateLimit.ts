@@ -6,7 +6,9 @@ interface RateLimitInfo {
   resetTime: number;
 }
 
-// 内存存储速率限制信息（演示用）
+// 内存存储速率限制信息（仅在单个Worker实例生命周期内有效）
+// 注意：在Cloudflare Workers中，这个存储在Worker重启后会丢失
+// 生产环境建议使用Cloudflare KV或D1数据库存储速率限制信息
 const rateLimitStore = new Map<string, RateLimitInfo>();
 
 export async function rateLimitMiddleware(c: Context<{ Bindings: Env }>, next: Next) {

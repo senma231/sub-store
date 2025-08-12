@@ -207,9 +207,11 @@ nodesRouter.get('/:id', async (c) => {
 
       node = result.data;
     } else {
-      // 使用内存存储作为回退
-      console.log('Using memory storage for get node by id');
-      node = memoryNodes.find(n => n.id === nodeId);
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Database not configured',
+      }, 503);
     }
 
     if (!node) {
@@ -282,21 +284,12 @@ nodesRouter.post('/', async (c) => {
         }, 500);
       }
     } else {
-      // 使用内存存储作为回退
-      console.log('Using memory storage for node creation');
-
-      // 检查是否已存在相同的节点
-      const existingNode = memoryNodes.find(n =>
-        n.name === node.name || (n.server === node.server && n.port === node.port && n.type === node.type)
-      );
-
-      if (existingNode) {
-        return c.json({
-          success: false,
-          error: 'Conflict',
-          message: 'Node with this name or server:port already exists',
-        }, 409);
-      }
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Database not configured',
+      }, 503);
+    }
 
       const createdNode = addNode(node);
       result = {
@@ -369,35 +362,11 @@ nodesRouter.put('/:id', async (c) => {
         }, 500);
       }
     } else {
-      // 使用内存存储作为回退
-      console.log('Using memory storage for node update');
-
-      existingNode = memoryNodes.find(n => n.id === nodeId);
-      if (!existingNode) {
-        return c.json({
-          success: false,
-          error: 'Node not found',
-          message: `Node with id '${nodeId}' does not exist`,
-        }, 404);
-      }
-
-      const updatedNode = updateNode(nodeId, {
-        ...body,
-        updatedAt: new Date().toISOString(),
-      });
-
-      if (!updatedNode) {
-        return c.json({
-          success: false,
-          error: 'Failed to update node',
-          message: 'Node update failed',
-        }, 500);
-      }
-
-      result = {
-        success: true,
-        data: updatedNode
-      };
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Database not configured',
+      }, 503);
     }
 
     return c.json({
@@ -457,31 +426,11 @@ nodesRouter.delete('/:id', async (c) => {
         }, 500);
       }
     } else {
-      // 使用内存存储作为回退
-      console.log('Using memory storage for node deletion');
-
-      existingNode = memoryNodes.find(n => n.id === nodeId);
-      if (!existingNode) {
-        return c.json({
-          success: false,
-          error: 'Node not found',
-          message: `Node with id '${nodeId}' does not exist`,
-        }, 404);
-      }
-
-      const deletedNode = deleteNode(nodeId);
-      if (!deletedNode) {
-        return c.json({
-          success: false,
-          error: 'Failed to delete node',
-          message: 'Node deletion failed',
-        }, 500);
-      }
-
-      result = {
-        success: true,
-        data: deletedNode
-      };
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Database not configured',
+      }, 503);
     }
 
     return c.json({
@@ -513,6 +462,24 @@ nodesRouter.post('/batch', async (c) => {
       }, 400);
     }
 
+    const validActions = ['enable', 'disable', 'delete'];
+    if (!validActions.includes(action)) {
+      return c.json({
+        success: false,
+        error: 'Invalid action',
+        message: `Action must be one of: ${validActions.join(', ')}`,
+      }, 400);
+    }
+
+    const nodesRepo = c.get('nodesRepo');
+    if (!nodesRepo) {
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Database not configured',
+      }, 503);
+    }
+
     const results = {
       success: 0,
       failed: 0,
@@ -522,45 +489,43 @@ nodesRouter.post('/batch', async (c) => {
 
     for (const nodeId of nodeIds) {
       try {
-        const nodeIndex = memoryNodes.findIndex(n => n.id === nodeId);
-
-        if (nodeIndex === -1) {
+        // 检查节点是否存在
+        const nodeResult = await nodesRepo.getNodeById(nodeId);
+        if (!nodeResult.success || !nodeResult.data) {
           results.failed++;
           results.errors.push(`Node ${nodeId} not found`);
           continue;
         }
 
+        let updateResult;
         switch (action) {
           case 'enable':
-            const enabledNode = updateNode(nodeId, {
+            updateResult = await nodesRepo.updateNode(nodeId, {
               enabled: true,
               updatedAt: new Date().toISOString()
             });
-            if (enabledNode) {
-              results.affectedNodes.push(enabledNode);
-              results.success++;
-            }
             break;
           case 'disable':
-            const disabledNode = updateNode(nodeId, {
+            updateResult = await nodesRepo.updateNode(nodeId, {
               enabled: false,
               updatedAt: new Date().toISOString()
             });
-            if (disabledNode) {
-              results.affectedNodes.push(disabledNode);
-              results.success++;
-            }
             break;
           case 'delete':
-            const deletedNode = deleteNode(nodeId);
-            if (deletedNode) {
-              results.affectedNodes.push(deletedNode);
-              results.success++;
-            }
+            updateResult = await nodesRepo.deleteNode(nodeId);
             break;
           default:
             results.failed++;
             results.errors.push(`Unknown action: ${action}`);
+            continue;
+        }
+
+        if (updateResult && updateResult.success) {
+          results.affectedNodes.push(updateResult.data);
+          results.success++;
+        } else {
+          results.failed++;
+          results.errors.push(`Failed to ${action} node ${nodeId}: ${updateResult?.error || 'Unknown error'}`);
         }
       } catch (error) {
         results.failed++;
@@ -632,20 +597,26 @@ nodesRouter.post('/import', async (c) => {
           updatedAt: now,
         };
 
-        // 检查是否已存在相同的节点（基于 server:port）
-        const existingNode = memoryNodes.find(n =>
-          n.server === node.server && n.port === node.port && n.type === node.type
-        );
-
-        if (existingNode) {
+        // 使用数据库创建节点
+        const nodesRepo = c.get('nodesRepo');
+        if (!nodesRepo) {
           results.failed++;
-          results.errors.push(`Node ${node.server}:${node.port} (${node.type}) already exists`);
+          results.errors.push('Database not configured');
           continue;
         }
 
-        addNode(node);
-        results.importedNodes.push(node);
-        results.success++;
+        const createResult = await nodesRepo.createNode(node);
+        if (createResult.success) {
+          results.importedNodes.push(createResult.data);
+          results.success++;
+        } else {
+          results.failed++;
+          if (createResult.error?.includes('UNIQUE constraint failed')) {
+            results.errors.push(`Node ${node.server}:${node.port} (${node.type}) already exists`);
+          } else {
+            results.errors.push(`Failed to create node ${node.name}: ${createResult.error}`);
+          }
+        }
 
       } catch (error) {
         results.failed++;
