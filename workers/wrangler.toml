@@ -21,7 +21,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
-CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://senma231.github.io"
+CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://senma231.github.io,https://sub.senma.io"
 
 # 在生产环境中，这些应该通过 Cloudflare Dashboard 或 wrangler secret 命令设置
 # 方法1: Cloudflare Dashboard -> Workers & Pages -> substore-api -> Settings -> Variables
