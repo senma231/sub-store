@@ -164,7 +164,7 @@ app.route('/health', healthRouter);
 app.route('/sub', subscriptionRouter);
 
 // 订阅解析路由 (无需认证，用于前端解析订阅链接)
-app.route('/api/subscription', subscriptionsRouter);
+app.route('/subscription', subscriptionsRouter);
 
 // 认证路由
 app.route('/auth', authRouter);

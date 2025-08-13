@@ -114,7 +114,7 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     setSubscriptionLoading(true);
     try {
       // 通过代理获取订阅内容 (无需认证)
-      const response = await fetch('/api/subscription/parse', {
+      const response = await fetch('/subscription/parse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     setSubscriptionLoading(true);
     try {
       // 直接解析内容
-      const response = await fetch('/api/subscription/parse', {
+      const response = await fetch('/subscription/parse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
