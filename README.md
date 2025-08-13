@@ -227,7 +227,7 @@ git push origin master
 |------------|------|----------|
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API 令牌 | [获取教程](#获取-cloudflare-api-token) |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户 ID | Dashboard 右侧边栏 |
-| `API_BASE_URL` | Workers API 地址 | `https://sub-store-api.senma231.workers.dev` |
+| `API_BASE_URL` | Workers API 地址 | `https://sub-api.senma.io` |
 | `FRONTEND_URL` | 前端访问地址 | `https://sub-store-frontend.pages.dev` |
 
 ### 获取 Cloudflare API Token
