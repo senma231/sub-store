@@ -25,6 +25,7 @@ import {
   GlobalOutlined
 } from '@ant-design/icons';
 import type { ProxyNode } from '@/types';
+import api from '@/services/api';
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
@@ -113,20 +114,8 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
 
     setSubscriptionLoading(true);
     try {
-      // 通过代理获取订阅内容 (无需认证)
-      const response = await fetch('/subscription/parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: subscriptionUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      // 通过代理获取订阅内容 (无需认证) - 使用API客户端
+      const result = await api.post('/subscription/parse', { url: subscriptionUrl });
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
@@ -171,20 +160,8 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
 
     setSubscriptionLoading(true);
     try {
-      // 直接解析内容
-      const response = await fetch('/subscription/parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: content.trim() }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      // 直接解析内容 - 使用API客户端
+      const result = await api.post('/subscription/parse', { content: content.trim() });
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
