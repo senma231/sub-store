@@ -2,8 +2,8 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 import { message } from 'antd';
 import type { ApiResponse } from '@/types';
 
-// API 基础配置
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
+// API 基础配置 - 临时硬编码确保正确的API地址
+const API_BASE_URL = 'https://sub-api.senma.io';
 
 // 创建 axios 实例
 const api: AxiosInstance = axios.create({
