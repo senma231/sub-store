@@ -273,16 +273,11 @@ subscriptionsRouter.post('/:id/update', async (c) => {
 
     const subscription = subResult.data;
 
-    // 获取订阅内容 - 使用浏览器请求头避免被拦截
+    // 获取订阅内容 - 使用简单请求头避免405错误
     const response = await fetch(subscription.url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/plain, text/html, application/json, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
+        'User-Agent': 'v2rayN/6.23',
       },
       redirect: 'follow',
     });
@@ -359,25 +354,59 @@ subscriptionsRouter.post('/parse', async (c) => {
       }, 400);
     }
 
-    // 获取订阅内容 - 使用浏览器请求头避免被拦截
-    const response = await fetch(body.url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/plain, text/html, application/json, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
+    // 获取订阅内容 - 尝试多种请求策略避免405错误
+    let response;
+    const strategies = [
+      // 策略1: 最简单的请求头
+      {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
-      redirect: 'follow',
-    });
+      // 策略2: 模拟V2Ray客户端
+      {
+        'User-Agent': 'v2rayN/6.23',
+      },
+      // 策略3: 模拟Clash客户端
+      {
+        'User-Agent': 'clash-verge/v1.3.1',
+      },
+      // 策略4: 标准浏览器但简化
+      {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+      },
+    ];
 
-    if (!response.ok) {
+    let lastError;
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        response = await fetch(body.url, {
+          method: 'GET',
+          headers: strategies[i],
+          redirect: 'follow',
+        });
+
+        if (response.ok) {
+          break; // 成功了，跳出循环
+        } else if (response.status === 405) {
+          lastError = `Strategy ${i + 1} failed with 405`;
+          continue; // 尝试下一个策略
+        } else {
+          lastError = `Strategy ${i + 1} failed with ${response.status}`;
+          break; // 其他错误，不再尝试
+        }
+      } catch (error) {
+        lastError = `Strategy ${i + 1} error: ${error}`;
+        continue;
+      }
+    }
+
+    if (!response || !response.ok) {
       return c.json({
         success: false,
         error: 'Fetch Error',
-        message: `Failed to fetch subscription: ${response.status} ${response.statusText}`,
+        message: response
+          ? `Failed to fetch subscription: ${response.status} ${response.statusText}`
+          : `All request strategies failed. Last error: ${lastError}`,
       }, 400);
     }
 
