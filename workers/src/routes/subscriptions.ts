@@ -427,7 +427,26 @@ subscriptionsRouter.post('/parse', async (c) => {
     // content 已经在上面设置了，这里不需要再处理
 
     // 解析订阅内容
-    const nodes = parseSubscriptionContent(content);
+    console.log('Starting to parse content, length:', content.length);
+    console.log('Content preview:', content.substring(0, 100));
+
+    let nodes;
+    try {
+      nodes = parseSubscriptionContent(content);
+      console.log('Parse successful, found nodes:', nodes.length);
+    } catch (parseError) {
+      console.error('Parse function error:', parseError);
+      return c.json({
+        success: false,
+        error: 'Parse Error',
+        message: `Failed to parse subscription content: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+        debug: {
+          contentLength: content.length,
+          contentPreview: content.substring(0, 100),
+          parseError: parseError instanceof Error ? parseError.stack : String(parseError)
+        }
+      }, 500);
+    }
 
     return c.json({
       success: true,
@@ -443,7 +462,10 @@ subscriptionsRouter.post('/parse', async (c) => {
     return c.json({
       success: false,
       error: 'Internal Server Error',
-      message: 'Failed to parse subscription',
+      message: `Failed to parse subscription: ${error instanceof Error ? error.message : String(error)}`,
+      debug: {
+        error: error instanceof Error ? error.stack : String(error)
+      }
     }, 500);
   }
 });
