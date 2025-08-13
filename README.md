@@ -228,7 +228,7 @@ git push origin master
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API 令牌 | [获取教程](#获取-cloudflare-api-token) |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 账户 ID | Dashboard 右侧边栏 |
 | `API_BASE_URL` | Workers API 地址 | `https://sub-api.senma.io` |
-| `FRONTEND_URL` | 前端访问地址 | `https://sub-store-frontend.pages.dev` |
+| `FRONTEND_URL` | 前端访问地址 | `https://sub.senma.io` |
 
 ### 获取 Cloudflare API Token
 
@@ -262,7 +262,7 @@ git push origin master
 
 ### 🔐 首次登录
 
-1. 访问前端管理界面：`https://your-frontend.pages.dev`
+1. 访问前端管理界面：`https://sub.senma.io`
 2. 使用默认管理员账户登录：
    - 用户名：`admin`
    - 密码：您设置的 `ADMIN_TOKEN` 值
@@ -292,13 +292,13 @@ git push origin master
 #### 标准订阅
 ```bash
 # V2Ray 格式
-https://your-domain.workers.dev/sub/v2ray
+https://sub-api.senma.io/sub/v2ray
 
 # Clash 格式
-https://your-domain.workers.dev/sub/clash
+https://sub-api.senma.io/sub/clash
 
 # Shadowrocket 格式
-https://your-domain.workers.dev/sub/shadowrocket
+https://sub-api.senma.io/sub/shadowrocket
 ```
 
 #### 自定义订阅
