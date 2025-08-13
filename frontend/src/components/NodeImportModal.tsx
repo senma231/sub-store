@@ -161,6 +161,64 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     }
   };
 
+  // 解析手动输入的订阅内容
+  const handleParseContent = async () => {
+    const content = form.getFieldValue('subscriptionContent');
+    if (!content?.trim()) {
+      message.warning('请输入订阅内容');
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    try {
+      // 直接解析内容
+      const response = await fetch('/api/subscription/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: content.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || '解析失败');
+      }
+
+      const nodes = result.data.nodes || [];
+      if (nodes.length === 0) {
+        message.warning('内容中没有找到有效节点');
+        return;
+      }
+
+      // 转换为ParsedNode格式
+      const parsedNodes = nodes.map((node: any, index: number) => ({
+        id: `content-${Date.now()}-${index}`,
+        name: node.name || `节点-${index + 1}`,
+        type: node.type,
+        server: node.server,
+        port: node.port,
+        enabled: true,
+        isValid: true,
+        ...node
+      }));
+
+      setParsedNodes(parsedNodes);
+      setSelectedNodes(parsedNodes.map((node: ParsedNode) => node.id));
+      message.success(`从内容解析到 ${parsedNodes.length} 个节点`);
+
+    } catch (error) {
+      console.error('内容解析失败:', error);
+      message.error(`内容解析失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
   // 解析单个节点链接
   const parseNodeLink = (link: string, index: number): ParsedNode => {
     const id = `parsed-${Date.now()}-${index}`;
@@ -537,6 +595,39 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
             <Alert
               message="订阅链接导入说明"
               description="支持标准的 V2Ray、Clash 订阅链接。系统会自动获取订阅内容并解析其中的节点信息。"
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          </Form>
+        </TabPane>
+
+        <TabPane tab="手动输入" key="content" icon={<GlobalOutlined />}>
+          <Form form={form} layout="vertical">
+            <Form.Item
+              label="订阅内容"
+              name="subscriptionContent"
+              help="粘贴订阅内容（Base64编码或纯文本节点链接）"
+            >
+              <TextArea
+                rows={8}
+                placeholder="请粘贴订阅内容，支持Base64编码或多行节点链接..."
+                style={{ fontFamily: 'monospace' }}
+              />
+            </Form.Item>
+            <Form.Item>
+              <Button
+                type="primary"
+                onClick={handleParseContent}
+                loading={subscriptionLoading}
+                block
+              >
+                解析内容
+              </Button>
+            </Form.Item>
+            <Alert
+              message="手动输入说明"
+              description="如果订阅链接无法访问，您可以手动复制订阅内容到此处进行解析。支持Base64编码的订阅内容或多行节点链接。"
               type="info"
               showIcon
               style={{ marginBottom: 16 }}

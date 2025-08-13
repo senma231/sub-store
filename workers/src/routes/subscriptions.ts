@@ -335,82 +335,96 @@ subscriptionsRouter.post('/parse', async (c) => {
   try {
     const body = await c.req.json();
 
-    if (!body.url) {
+    // 支持两种模式：URL解析或直接内容解析
+    if (!body.url && !body.content) {
       return c.json({
         success: false,
         error: 'Validation Error',
-        message: 'URL is required',
+        message: 'Either URL or content is required',
       }, 400);
     }
 
-    // 验证URL格式
-    try {
-      new URL(body.url);
-    } catch {
-      return c.json({
-        success: false,
-        error: 'Validation Error',
-        message: 'Invalid URL format',
-      }, 400);
-    }
+    let content = '';
 
-    // 获取订阅内容 - 尝试多种请求策略避免405错误
-    let response;
-    const strategies = [
-      // 策略1: 最简单的请求头
-      {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-      // 策略2: 模拟V2Ray客户端
-      {
-        'User-Agent': 'v2rayN/6.23',
-      },
-      // 策略3: 模拟Clash客户端
-      {
-        'User-Agent': 'clash-verge/v1.3.1',
-      },
-      // 策略4: 标准浏览器但简化
-      {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-      },
-    ];
-
-    let lastError;
-    for (let i = 0; i < strategies.length; i++) {
+    // 如果提供了直接内容，跳过网络请求
+    if (body.content) {
+      content = body.content;
+    } else {
+      // 验证URL格式
       try {
+        new URL(body.url);
+      } catch {
+        return c.json({
+          success: false,
+          error: 'Validation Error',
+          message: 'Invalid URL format',
+        }, 400);
+      }
+
+      // 获取订阅内容 - 使用最简单的请求避免405错误
+      let response;
+      let lastError = '';
+
+      try {
+        // 尝试最简单的请求，完全无自定义头部
         response = await fetch(body.url, {
           method: 'GET',
-          headers: strategies[i],
           redirect: 'follow',
         });
 
-        if (response.ok) {
-          break; // 成功了，跳出循环
-        } else if (response.status === 405) {
-          lastError = `Strategy ${i + 1} failed with 405`;
-          continue; // 尝试下一个策略
-        } else {
-          lastError = `Strategy ${i + 1} failed with ${response.status}`;
-          break; // 其他错误，不再尝试
+        if (!response.ok) {
+          lastError = `Simple request failed: ${response.status} ${response.statusText}`;
+
+          // 如果简单请求失败，尝试添加基本的User-Agent
+          try {
+            response = await fetch(body.url, {
+              method: 'GET',
+              headers: {
+                'User-Agent': 'curl/7.68.0',
+              },
+              redirect: 'follow',
+            });
+
+            if (!response.ok) {
+              lastError += ` | Curl-like request failed: ${response.status} ${response.statusText}`;
+            }
+          } catch (error) {
+            lastError += ` | Curl-like request error: ${error}`;
+          }
         }
       } catch (error) {
-        lastError = `Strategy ${i + 1} error: ${error}`;
-        continue;
+        lastError = `Request error: ${error}`;
+        response = null;
       }
+
+      if (!response || !response.ok) {
+        console.error('Subscription fetch failed:', {
+          url: body.url,
+          status: response?.status,
+          statusText: response?.statusText,
+          lastError,
+        });
+
+        return c.json({
+          success: false,
+          error: 'Fetch Error',
+          message: response
+            ? `Failed to fetch subscription: ${response.status} ${response.statusText}. Details: ${lastError}`
+            : `Request failed. Error: ${lastError}`,
+          debug: {
+            url: body.url,
+            status: response?.status,
+            statusText: response?.statusText,
+            lastError,
+          },
+          suggestion: 'Try copying the subscription content manually and use the content field instead of url',
+        }, 400);
+      }
+
+      content = await response.text();
     }
 
-    if (!response || !response.ok) {
-      return c.json({
-        success: false,
-        error: 'Fetch Error',
-        message: response
-          ? `Failed to fetch subscription: ${response.status} ${response.statusText}`
-          : `All request strategies failed. Last error: ${lastError}`,
-      }, 400);
-    }
-
-    const content = await response.text();
+    // content 已经在上面设置了，这里不需要再处理
 
     // 解析订阅内容
     const nodes = parseSubscriptionContent(content);
