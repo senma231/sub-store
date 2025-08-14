@@ -158,37 +158,61 @@ app.use('*', prettyJSON());
 
 // CORS 配置
 app.use('*', async (c, next) => {
-  // 获取配置的 CORS 源
-  const corsOrigins = c.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()) || [];
-
-  // 默认允许的源
-  const defaultOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://localhost:3000',
-  ];
-
-  // 合并所有允许的源
-  const allowedOrigins = [...defaultOrigins, ...corsOrigins];
+  console.log('🔍 [CORS] 处理CORS请求');
 
   return cors({
     origin: (origin) => {
-      // 如果没有 origin（同源请求），返回 '*'
-      if (!origin) return '*';
+      console.log('🔍 [CORS] 检查来源:', origin);
 
-      // 检查是否在允许列表中
-      if (allowedOrigins.includes(origin)) return origin;
+      // 获取配置的 CORS 源
+      const corsOriginsEnv = c.env.CORS_ORIGINS || '';
+      const corsOrigins = corsOriginsEnv ? corsOriginsEnv.split(',').map(origin => origin.trim()) : [];
 
-      // 如果配置了通配符，允许所有
-      if (corsOrigins.includes('*')) return '*';
+    // 默认允许的源
+    const defaultOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://localhost:3000',
+      'https://sub.senma.io',
+      'https://sub-store-frontend.pages.dev',
+    ];
 
-      // 检查是否是 Cloudflare Pages 域名
-      if (origin.includes('.pages.dev')) return origin;
+    // 合并所有允许的源
+    const allowedOrigins = [...defaultOrigins, ...corsOrigins];
+    console.log('✅ [CORS] 允许的源:', allowedOrigins);
 
-      // 检查是否是 Workers 域名
-      if (origin.includes('.workers.dev')) return origin;
+    // 如果没有 origin（同源请求），允许
+    if (!origin) {
+      console.log('✅ [CORS] 无来源，允许访问');
+      return true;
+    }
+
+    // 检查是否在允许列表中
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ [CORS] 来源在允许列表中:', origin);
+      return origin;
+    }
+
+    // 如果配置了通配符，允许所有
+    if (corsOrigins.includes('*')) {
+      console.log('✅ [CORS] 通配符配置，允许所有');
+      return '*';
+    }
+
+    // 检查是否是 Cloudflare Pages 域名
+    if (origin.includes('.pages.dev')) {
+      console.log('✅ [CORS] Cloudflare Pages 域名，允许:', origin);
+      return origin;
+    }
+
+    // 检查是否是 Workers 域名
+    if (origin.includes('.workers.dev')) {
+      console.log('✅ [CORS] Cloudflare Workers 域名，允许:', origin);
+      return origin;
+    }
 
       // 默认拒绝
+      console.log('❌ [CORS] 来源不在允许列表中，拒绝:', origin);
       return false;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
