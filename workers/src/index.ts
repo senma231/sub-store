@@ -160,13 +160,13 @@ app.use('*', prettyJSON());
 app.use('*', async (c, next) => {
   console.log('🔍 [CORS] 处理CORS请求');
 
+  // 获取配置的 CORS 源
+  const corsOriginsEnv = c.env.CORS_ORIGINS || '';
+  const corsOrigins = corsOriginsEnv ? corsOriginsEnv.split(',').map((origin: string) => origin.trim()) : [];
+
   return cors({
     origin: (origin) => {
       console.log('🔍 [CORS] 检查来源:', origin);
-
-      // 获取配置的 CORS 源
-      const corsOriginsEnv = c.env.CORS_ORIGINS || '';
-      const corsOrigins = corsOriginsEnv ? corsOriginsEnv.split(',').map(origin => origin.trim()) : [];
 
     // 默认允许的源
     const defaultOrigins = [
