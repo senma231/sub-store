@@ -20,6 +20,7 @@ import { statsRouter } from './routes/stats';
 import { healthRouter } from './routes/health';
 import { customSubscriptionsRouter } from './routes/customSubscriptions';
 import { subscriptionsRouter } from './routes/subscriptions';
+import { publicSubscriptionsRouter } from './routes/publicSubscriptions';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -162,6 +163,9 @@ app.route('/health', healthRouter);
 
 // 订阅路由 (无需认证，但有速率限制)
 app.route('/sub', subscriptionRouter);
+
+// 自定义订阅公开访问路由 (无需认证)
+app.route('/subscriptions', publicSubscriptionsRouter);
 
 // 订阅解析路由 (无需认证，用于前端解析订阅链接)
 app.route('/subscription', subscriptionsRouter);
