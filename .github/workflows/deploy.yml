@@ -136,11 +136,11 @@ jobs:
         # JWT 密钥（可选，系统会自动生成）
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
-  # 部署前端到 GitHub Pages (已禁用，使用 Cloudflare Pages)
+  # 部署前端到 GitHub Pages (临时启用用于测试)
   deploy-frontend-github:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && false # 禁用 GitHub Pages
+    if: github.ref == 'refs/heads/master' # 临时启用 GitHub Pages
     
     permissions:
       contents: read
