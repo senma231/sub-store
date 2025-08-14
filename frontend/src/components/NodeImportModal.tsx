@@ -122,13 +122,14 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     try {
       console.log('🚀 [订阅解析] 发送API请求...');
       // 通过代理获取订阅内容 (无需认证) - 使用API客户端
-      const result = await api.post('/subscription/parse', { url: subscriptionUrl });
-      console.log('✅ [订阅解析] API请求成功:', result);
+      const response = await api.post('/subscription/parse', { url: subscriptionUrl });
+      console.log('✅ [订阅解析] API请求成功:', response);
+      const result = response.data;
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
 
-      const nodes = result.data.nodes || [];
+      const nodes = result.data?.nodes || [];
       console.log('✅ [订阅解析] 解析到的节点:', nodes);
       console.log('📊 [订阅解析] 节点数量:', nodes.length);
 
@@ -154,19 +155,19 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       setSelectedNodes(parsedNodes.map((node: ParsedNode) => node.id));
       message.success(`从订阅链接解析到 ${parsedNodes.length} 个节点`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [订阅解析] 请求失败:', error);
-      console.error('❌ [订阅解析] 错误类型:', error.constructor.name);
+      console.error('❌ [订阅解析] 错误类型:', error?.constructor?.name);
       console.error('❌ [订阅解析] 错误消息:', error instanceof Error ? error.message : String(error));
       console.error('❌ [订阅解析] 错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
 
       // 检查是否是网络错误
-      if (error.response) {
+      if (error?.response) {
         console.error('❌ [订阅解析] HTTP响应错误:', error.response.status, error.response.statusText);
         console.error('❌ [订阅解析] 响应数据:', error.response.data);
         console.error('❌ [订阅解析] 响应头:', error.response.headers);
         console.error('❌ [订阅解析] 请求配置:', error.config);
-      } else if (error.request) {
+      } else if (error?.request) {
         console.error('❌ [订阅解析] 网络请求错误:', error.request);
       }
 
@@ -195,13 +196,14 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
     try {
       console.log('🚀 [手动解析] 发送API请求...');
       // 直接解析内容 - 使用API客户端
-      const result = await api.post('/subscription/parse', { content: content.trim() });
-      console.log('✅ [手动解析] API请求成功:', result);
+      const response = await api.post('/subscription/parse', { content: content.trim() });
+      console.log('✅ [手动解析] API请求成功:', response);
+      const result = response.data;
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
 
-      const nodes = result.data.nodes || [];
+      const nodes = result.data?.nodes || [];
       console.log('✅ [手动解析] 解析到的节点:', nodes);
       console.log('📊 [手动解析] 节点数量:', nodes.length);
 
@@ -227,19 +229,19 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       setSelectedNodes(parsedNodes.map((node: ParsedNode) => node.id));
       message.success(`从内容解析到 ${parsedNodes.length} 个节点`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [手动解析] 请求失败:', error);
-      console.error('❌ [手动解析] 错误类型:', error.constructor.name);
+      console.error('❌ [手动解析] 错误类型:', error?.constructor?.name);
       console.error('❌ [手动解析] 错误消息:', error instanceof Error ? error.message : String(error));
       console.error('❌ [手动解析] 错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
 
       // 检查是否是网络错误
-      if (error.response) {
+      if (error?.response) {
         console.error('❌ [手动解析] HTTP响应错误:', error.response.status, error.response.statusText);
         console.error('❌ [手动解析] 响应数据:', error.response.data);
         console.error('❌ [手动解析] 响应头:', error.response.headers);
         console.error('❌ [手动解析] 请求配置:', error.config);
-      } else if (error.request) {
+      } else if (error?.request) {
         console.error('❌ [手动解析] 网络请求错误:', error.request);
       }
 
