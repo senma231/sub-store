@@ -20,6 +20,7 @@ import { statsRouter } from './routes/stats';
 import { healthRouter } from './routes/health';
 import { customSubscriptionsRouter } from './routes/customSubscriptions';
 import { subscriptionsRouter } from './routes/subscriptions';
+import { trafficManagementRouter } from './routes/trafficManagement';
 import { publicSubscriptionsRouter } from './routes/publicSubscriptions';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
@@ -178,6 +179,7 @@ app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
 app.route('/api/subscriptions', customSubscriptionsRouter);
+app.route('/api/subscriptions', trafficManagementRouter);
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 
 // 根路径

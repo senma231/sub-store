@@ -11,6 +11,12 @@ export interface CustomSubscription {
   updatedAt: string;
   accessCount: number;
   lastAccessAt?: string;
+  // 流量限制相关字段
+  trafficLimit?: number;        // 流量限制(字节)，0表示无限制
+  trafficUsed?: number;         // 已使用流量(字节)
+  trafficResetCycle?: string;   // 重置周期: daily/weekly/monthly/manual
+  trafficResetDate?: string;    // 下次重置日期
+  trafficEnabled?: boolean;     // 是否启用流量限制
 }
 
 export interface DbCustomSubscription {
@@ -24,6 +30,12 @@ export interface DbCustomSubscription {
   updated_at: string;
   access_count: number;
   last_access_at?: string;
+  // 流量限制相关字段
+  traffic_limit?: number;
+  traffic_used?: number;
+  traffic_reset_cycle?: string;
+  traffic_reset_date?: string;
+  traffic_enabled?: boolean;
 }
 
 export class CustomSubscriptionsRepository {
@@ -152,6 +164,11 @@ export class CustomSubscriptionsRepository {
       updatedAt: result.data.updated_at,
       accessCount: result.data.access_count,
       lastAccessAt: result.data.last_access_at,
+      trafficLimit: result.data.traffic_limit || 0,
+      trafficUsed: result.data.traffic_used || 0,
+      trafficResetCycle: result.data.traffic_reset_cycle || 'monthly',
+      trafficResetDate: result.data.traffic_reset_date,
+      trafficEnabled: result.data.traffic_enabled || false,
     };
 
     return { success: true, data: subscription };
@@ -177,6 +194,11 @@ export class CustomSubscriptionsRepository {
       updatedAt: dbSub.updated_at,
       accessCount: dbSub.access_count,
       lastAccessAt: dbSub.last_access_at,
+      trafficLimit: dbSub.traffic_limit || 0,
+      trafficUsed: dbSub.traffic_used || 0,
+      trafficResetCycle: dbSub.traffic_reset_cycle || 'monthly',
+      trafficResetDate: dbSub.traffic_reset_date,
+      trafficEnabled: dbSub.traffic_enabled || false,
     }));
 
     return { success: true, data: subscriptions };
