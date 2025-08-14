@@ -17,23 +17,36 @@ const api: AxiosInstance = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    console.log('🚀 [API请求] 发送请求:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data,
+      params: config.params
+    });
+
     // 添加认证 token
     const token = localStorage.getItem('auth_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔐 [API请求] 添加认证token');
+    } else {
+      console.log('⚠️ [API请求] 无认证token');
     }
-    
+
     // 添加请求时间戳
     if (config.params) {
       config.params._t = Date.now();
     } else {
       config.params = { _t: Date.now() };
     }
-    
+
     return config;
   },
   (error) => {
-    console.error('Request error:', error);
+    console.error('❌ [API请求] 请求拦截器错误:', error);
     return Promise.reject(error);
   }
 );
@@ -41,17 +54,34 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   (response: AxiosResponse) => {
+    console.log('✅ [API响应] 收到响应:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      method: response.config.method?.toUpperCase(),
+      headers: response.headers,
+      data: response.data
+    });
+
     // 检查业务状态码
     if (response.data && response.data.success === false) {
       const errorMessage = response.data.message || response.data.error || '请求失败';
+      console.error('❌ [API响应] 业务逻辑错误:', errorMessage);
       message.error(errorMessage);
       return Promise.reject(new Error(errorMessage));
     }
-    
+
     return response;
   },
   (error) => {
-    console.error('Response error:', error);
+    console.error('❌ [API响应] 响应拦截器错误:', error);
+    console.error('❌ [API响应] 错误详情:', {
+      message: error.message,
+      code: error.code,
+      config: error.config,
+      request: error.request,
+      response: error.response
+    });
     
     // 处理网络错误
     if (!error.response) {

@@ -112,16 +112,28 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       return;
     }
 
+    console.log('🔍 [订阅解析] 开始解析订阅链接');
+    console.log('📋 [订阅解析] 订阅URL:', subscriptionUrl);
+    console.log('🌐 [订阅解析] 当前域名:', window.location.hostname);
+    console.log('🔗 [订阅解析] API基础URL:', api.defaults.baseURL);
+    console.log('📡 [订阅解析] 完整请求URL:', `${api.defaults.baseURL}/subscription/parse`);
+
     setSubscriptionLoading(true);
     try {
+      console.log('🚀 [订阅解析] 发送API请求...');
       // 通过代理获取订阅内容 (无需认证) - 使用API客户端
       const result = await api.post('/subscription/parse', { url: subscriptionUrl });
+      console.log('✅ [订阅解析] API请求成功:', result);
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
 
       const nodes = result.data.nodes || [];
+      console.log('✅ [订阅解析] 解析到的节点:', nodes);
+      console.log('📊 [订阅解析] 节点数量:', nodes.length);
+
       if (nodes.length === 0) {
+        console.warn('⚠️ [订阅解析] 未找到有效节点');
         message.warning('订阅链接中没有找到有效节点');
         return;
       }
@@ -143,7 +155,21 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       message.success(`从订阅链接解析到 ${parsedNodes.length} 个节点`);
 
     } catch (error) {
-      console.error('订阅解析失败:', error);
+      console.error('❌ [订阅解析] 请求失败:', error);
+      console.error('❌ [订阅解析] 错误类型:', error.constructor.name);
+      console.error('❌ [订阅解析] 错误消息:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [订阅解析] 错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
+
+      // 检查是否是网络错误
+      if (error.response) {
+        console.error('❌ [订阅解析] HTTP响应错误:', error.response.status, error.response.statusText);
+        console.error('❌ [订阅解析] 响应数据:', error.response.data);
+        console.error('❌ [订阅解析] 响应头:', error.response.headers);
+        console.error('❌ [订阅解析] 请求配置:', error.config);
+      } else if (error.request) {
+        console.error('❌ [订阅解析] 网络请求错误:', error.request);
+      }
+
       message.error(`订阅解析失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setSubscriptionLoading(false);
@@ -158,16 +184,29 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       return;
     }
 
+    console.log('🔍 [手动解析] 开始解析手动输入内容');
+    console.log('📋 [手动解析] 内容长度:', content.trim().length);
+    console.log('📋 [手动解析] 内容预览:', content.trim().substring(0, 100));
+    console.log('🌐 [手动解析] 当前域名:', window.location.hostname);
+    console.log('🔗 [手动解析] API基础URL:', api.defaults.baseURL);
+    console.log('📡 [手动解析] 完整请求URL:', `${api.defaults.baseURL}/subscription/parse`);
+
     setSubscriptionLoading(true);
     try {
+      console.log('🚀 [手动解析] 发送API请求...');
       // 直接解析内容 - 使用API客户端
       const result = await api.post('/subscription/parse', { content: content.trim() });
+      console.log('✅ [手动解析] API请求成功:', result);
       if (!result.success) {
         throw new Error(result.message || '解析失败');
       }
 
       const nodes = result.data.nodes || [];
+      console.log('✅ [手动解析] 解析到的节点:', nodes);
+      console.log('📊 [手动解析] 节点数量:', nodes.length);
+
       if (nodes.length === 0) {
+        console.warn('⚠️ [手动解析] 未找到有效节点');
         message.warning('内容中没有找到有效节点');
         return;
       }
@@ -189,7 +228,21 @@ export const NodeImportModal: React.FC<NodeImportModalProps> = ({
       message.success(`从内容解析到 ${parsedNodes.length} 个节点`);
 
     } catch (error) {
-      console.error('内容解析失败:', error);
+      console.error('❌ [手动解析] 请求失败:', error);
+      console.error('❌ [手动解析] 错误类型:', error.constructor.name);
+      console.error('❌ [手动解析] 错误消息:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [手动解析] 错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
+
+      // 检查是否是网络错误
+      if (error.response) {
+        console.error('❌ [手动解析] HTTP响应错误:', error.response.status, error.response.statusText);
+        console.error('❌ [手动解析] 响应数据:', error.response.data);
+        console.error('❌ [手动解析] 响应头:', error.response.headers);
+        console.error('❌ [手动解析] 请求配置:', error.config);
+      } else if (error.request) {
+        console.error('❌ [手动解析] 网络请求错误:', error.request);
+      }
+
       message.error(`内容解析失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setSubscriptionLoading(false);
