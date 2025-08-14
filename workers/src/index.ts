@@ -54,7 +54,7 @@ app.use('*', async (c, next) => {
   const method = c.req.method;
   const url = c.req.url;
   const path = c.req.path;
-  const headers = Object.fromEntries(c.req.header());
+  const headers = {}; // 简化headers处理避免迭代器错误
 
   console.log('🔍 [Worker请求] 收到请求:', {
     method,
@@ -64,21 +64,8 @@ app.use('*', async (c, next) => {
     timestamp: new Date().toISOString()
   });
 
-  // 如果是POST请求，尝试读取body（但不消费它）
-  if (method === 'POST' && headers['content-type']?.includes('application/json')) {
-    try {
-      const body = await c.req.json();
-      console.log('📋 [Worker请求] 请求体:', body);
-      // 重新设置请求体，因为已经被读取了
-      c.req = new Request(c.req.url, {
-        method: c.req.method,
-        headers: c.req.headers,
-        body: JSON.stringify(body)
-      });
-    } catch (e) {
-      console.log('⚠️ [Worker请求] 无法解析请求体:', e);
-    }
-  }
+  // 简化请求日志，避免消费请求体
+  console.log('📋 [Worker请求] 请求类型:', method, '路径:', path);
 
   await next();
 
@@ -156,70 +143,13 @@ app.use('*', logger());
 app.use('*', secureHeaders());
 app.use('*', prettyJSON());
 
-// CORS 配置
-app.use('*', async (c, next) => {
-  console.log('🔍 [CORS] 处理CORS请求');
-
-  // 获取配置的 CORS 源
-  const corsOriginsEnv = c.env.CORS_ORIGINS || '';
-  const corsOrigins = corsOriginsEnv ? corsOriginsEnv.split(',').map((origin: string) => origin.trim()) : [];
-
-  return cors({
-    origin: (origin) => {
-      console.log('🔍 [CORS] 检查来源:', origin);
-
-    // 默认允许的源
-    const defaultOrigins = [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'https://localhost:3000',
-      'https://sub.senma.io',
-      'https://sub-store-frontend.pages.dev',
-    ];
-
-    // 合并所有允许的源
-    const allowedOrigins = [...defaultOrigins, ...corsOrigins];
-    console.log('✅ [CORS] 允许的源:', allowedOrigins);
-
-    // 如果没有 origin（同源请求），允许
-    if (!origin) {
-      console.log('✅ [CORS] 无来源，允许访问');
-      return true;
-    }
-
-    // 检查是否在允许列表中
-    if (allowedOrigins.includes(origin)) {
-      console.log('✅ [CORS] 来源在允许列表中:', origin);
-      return origin;
-    }
-
-    // 如果配置了通配符，允许所有
-    if (corsOrigins.includes('*')) {
-      console.log('✅ [CORS] 通配符配置，允许所有');
-      return '*';
-    }
-
-    // 检查是否是 Cloudflare Pages 域名
-    if (origin.includes('.pages.dev')) {
-      console.log('✅ [CORS] Cloudflare Pages 域名，允许:', origin);
-      return origin;
-    }
-
-    // 检查是否是 Workers 域名
-    if (origin.includes('.workers.dev')) {
-      console.log('✅ [CORS] Cloudflare Workers 域名，允许:', origin);
-      return origin;
-    }
-
-      // 默认拒绝
-      console.log('❌ [CORS] 来源不在允许列表中，拒绝:', origin);
-      return false;
-    },
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-  })(c, next);
-});
+// CORS 配置 - 简化版本避免迭代器错误
+app.use('*', cors({
+  origin: ['https://sub.senma.io', 'https://sub-store-frontend.pages.dev', 'http://localhost:3000', 'http://127.0.0.1:3000', 'https://localhost:3000'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+}));
 
 // 速率限制（暂时禁用以简化演示）
 // app.use('/api/*', rateLimitMiddleware);

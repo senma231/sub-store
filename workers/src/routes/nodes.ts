@@ -58,11 +58,10 @@ nodesRouter.get('/', async (c) => {
       nodes = paginatedData?.items || [];
       total = paginatedData?.total || 0;
     } else {
-      return c.json({
-        success: false,
-        error: 'Database not available',
-        message: 'Database connection is required',
-      }, 500);
+      // 数据库未配置时返回空列表，而不是错误
+      console.warn('⚠️ [节点管理] 数据库未配置，返回空节点列表');
+      nodes = [];
+      total = 0;
     }
 
     const totalPages = Math.ceil(total / limit);

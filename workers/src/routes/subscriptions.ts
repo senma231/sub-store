@@ -333,8 +333,8 @@ subscriptionsRouter.post('/:id/update', async (c) => {
 // 解析订阅链接内容
 subscriptionsRouter.post('/parse', async (c) => {
   console.log('🔍 [订阅解析] 开始处理解析请求');
-  console.log('🌐 [订阅解析] 请求来源:', c.req.header('origin'));
-  console.log('🌐 [订阅解析] 请求头:', Object.fromEntries(c.req.header()));
+  console.log('🌐 [订阅解析] 请求来源: 已隐藏避免错误');
+  console.log('🌐 [订阅解析] 请求头: 已隐藏避免错误');
 
   try {
     const body = await c.req.json();

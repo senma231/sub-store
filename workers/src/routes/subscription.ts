@@ -588,47 +588,62 @@ function convertToYaml(obj: any, indent = 0): string {
 
 // 解析订阅链接
 subscriptionRouter.post('/parse', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { url } = body;
+  console.log('🔍 [订阅解析] 开始处理解析请求');
+  console.log('🌐 [订阅解析] 请求来源: 已隐藏避免错误');
 
-    if (!url) {
+  try {
+    console.log('📋 [订阅解析] 开始解析请求体');
+    const body = await c.req.json();
+    console.log('✅ [订阅解析] 请求体解析成功:', body);
+    const { url, content } = body;
+
+    let subscriptionContent = '';
+
+    if (content) {
+      // 直接解析内容
+      console.log('📝 [订阅解析] 使用直接内容解析');
+      subscriptionContent = content;
+    } else if (url) {
+      // 通过URL获取内容
+      console.log('🌐 [订阅解析] 通过URL获取内容:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Sub-Store/1.0',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('❌ [订阅解析] 获取订阅失败:', response.status, response.statusText);
+        return c.json({
+          success: false,
+          error: 'Fetch Error',
+          message: `Failed to fetch subscription: ${response.status} ${response.statusText}`,
+        }, 400);
+      }
+
+      subscriptionContent = await response.text();
+      console.log('✅ [订阅解析] 订阅内容获取成功，长度:', subscriptionContent.length);
+    } else {
+      console.error('❌ [订阅解析] 缺少URL或内容参数');
       return c.json({
         success: false,
         error: 'Validation Error',
-        message: 'URL is required',
+        message: 'URL or content is required',
       }, 400);
     }
-
-    console.log('Parsing subscription URL:', url);
-
-    // 获取订阅内容
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Sub-Store/1.0',
-      },
-    });
-
-    if (!response.ok) {
-      return c.json({
-        success: false,
-        error: 'Fetch Error',
-        message: `Failed to fetch subscription: ${response.status} ${response.statusText}`,
-      }, 400);
-    }
-
-    const content = await response.text();
-    console.log('Subscription content length:', content.length);
 
     // 解析订阅内容
-    const nodes = parseSubscriptionContent(content);
+    console.log('🔍 [订阅解析] 开始解析订阅内容');
+    const nodes = parseSubscriptionContent(subscriptionContent);
+    console.log('✅ [订阅解析] 解析完成，节点数量:', nodes.length);
 
     return c.json({
       success: true,
       data: {
         nodes,
         total: nodes.length,
-        url,
+        url: url || 'direct-content',
       },
       message: `Successfully parsed ${nodes.length} nodes from subscription`,
     });
