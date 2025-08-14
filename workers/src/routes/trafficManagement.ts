@@ -6,8 +6,7 @@ import { TrafficManager, TrafficStats, TrafficSettings } from '../utils/trafficM
 
 export const trafficManagementRouter = new Hono<{ Bindings: Env }>();
 
-// 应用认证中间件
-trafficManagementRouter.use('*', authMiddleware);
+// 认证中间件已在主路由中应用，这里不需要重复应用
 
 // 获取订阅流量统计
 trafficManagementRouter.get('/:uuid/traffic', async (c) => {
