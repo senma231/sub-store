@@ -179,8 +179,8 @@ app.route('/auth', authRouter);
 app.use('/api/*', authMiddleware);
 app.route('/api/nodes', nodesRouter);
 app.route('/api/stats', statsRouter);
+app.route('/api/subscriptions', trafficManagementRouter);  // 流量管理路由要在前面，因为更具体
 app.route('/api/subscriptions', customSubscriptionsRouter);
-app.route('/api/subscriptions', trafficManagementRouter);
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 app.route('/api/migration', migrationRouter);
 
