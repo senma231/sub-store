@@ -58,11 +58,50 @@ export class CustomSubscriptionsRepository {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         access_count INTEGER DEFAULT 0,
-        last_access_at TEXT
+        last_access_at TEXT,
+        traffic_limit INTEGER DEFAULT 0,
+        traffic_used INTEGER DEFAULT 0,
+        traffic_reset_cycle TEXT DEFAULT 'monthly',
+        traffic_reset_date TEXT,
+        traffic_enabled BOOLEAN DEFAULT FALSE
       )
     `;
-    
+
     return this.db.execute(sql);
+  }
+
+  // 迁移：添加流量管理字段
+  async migrateTrafficFields(): Promise<DbResult<void>> {
+    const migrations = [
+      'ALTER TABLE custom_subscriptions ADD COLUMN traffic_limit INTEGER DEFAULT 0',
+      'ALTER TABLE custom_subscriptions ADD COLUMN traffic_used INTEGER DEFAULT 0',
+      'ALTER TABLE custom_subscriptions ADD COLUMN traffic_reset_cycle TEXT DEFAULT "monthly"',
+      'ALTER TABLE custom_subscriptions ADD COLUMN traffic_reset_date TEXT',
+      'ALTER TABLE custom_subscriptions ADD COLUMN traffic_enabled BOOLEAN DEFAULT FALSE'
+    ];
+
+    for (const sql of migrations) {
+      try {
+        const result = await this.db.execute(sql);
+        if (!result.success) {
+          // 如果字段已存在，继续下一个迁移
+          if (result.error && result.error.includes('duplicate column name')) {
+            console.log(`Column already exists, skipping: ${sql}`);
+            continue;
+          }
+          return result;
+        }
+      } catch (error) {
+        // 如果字段已存在，继续下一个迁移
+        if (error.message && error.message.includes('duplicate column name')) {
+          console.log(`Column already exists, skipping: ${sql}`);
+          continue;
+        }
+        return { success: false, error: error.message };
+      }
+    }
+
+    return { success: true };
   }
 
   // 创建索引

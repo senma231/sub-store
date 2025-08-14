@@ -22,6 +22,7 @@ import { customSubscriptionsRouter } from './routes/customSubscriptions';
 import { subscriptionsRouter } from './routes/subscriptions';
 import { trafficManagementRouter } from './routes/trafficManagement';
 import { publicSubscriptionsRouter } from './routes/publicSubscriptions';
+import { migrationRouter } from './routes/migration';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -181,6 +182,7 @@ app.route('/api/stats', statsRouter);
 app.route('/api/subscriptions', customSubscriptionsRouter);
 app.route('/api/subscriptions', trafficManagementRouter);
 app.route('/api/manage/subscriptions', subscriptionsRouter);
+app.route('/api/migration', migrationRouter);
 
 // 根路径
 app.get('/', (c) => {
