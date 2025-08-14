@@ -384,4 +384,72 @@ export class CustomSubscriptionsRepository {
     // 返回更新后的数据
     return this.getByUuid(uuid);
   }
+
+  // 更新流量设置
+  async updateTrafficSettings(uuid: string, settings: { enabled: boolean; limit: number; resetCycle: string }): Promise<DbResult<void>> {
+    const resetDate = this.calculateNextResetDate(settings.resetCycle);
+
+    const sql = `
+      UPDATE custom_subscriptions
+      SET traffic_enabled = ?, traffic_limit = ?, traffic_reset_cycle = ?, traffic_reset_date = ?, updated_at = ?
+      WHERE uuid = ?
+    `;
+
+    const params = [
+      settings.enabled,
+      settings.limit,
+      settings.resetCycle,
+      resetDate,
+      new Date().toISOString(),
+      uuid
+    ];
+
+    return this.db.execute(sql, params);
+  }
+
+  // 重置流量
+  async resetTraffic(uuid: string): Promise<DbResult<void>> {
+    const sql = `
+      UPDATE custom_subscriptions
+      SET traffic_used = 0, updated_at = ?
+      WHERE uuid = ?
+    `;
+
+    const params = [
+      new Date().toISOString(),
+      uuid
+    ];
+
+    return this.db.execute(sql, params);
+  }
+
+  // 计算下次重置日期
+  private calculateNextResetDate(resetCycle: string): string | null {
+    if (resetCycle === 'manual') {
+      return null;
+    }
+
+    const now = new Date();
+    let nextReset: Date;
+
+    switch (resetCycle) {
+      case 'daily':
+        nextReset = new Date(now);
+        nextReset.setDate(now.getDate() + 1);
+        nextReset.setHours(0, 0, 0, 0);
+        break;
+      case 'weekly':
+        nextReset = new Date(now);
+        nextReset.setDate(now.getDate() + (7 - now.getDay()));
+        nextReset.setHours(0, 0, 0, 0);
+        break;
+      case 'monthly':
+        nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        break;
+      default:
+        return null;
+    }
+
+    return nextReset.toISOString();
+  }
 }

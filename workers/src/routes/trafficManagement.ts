@@ -59,3 +59,90 @@ trafficManagementRouter.get('/:uuid/traffic', async (c) => {
     }, 500);
   }
 });
+
+// 更新订阅流量设置
+trafficManagementRouter.put('/:uuid/traffic', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+    const db = c.get('db');
+
+    if (!db) {
+      return c.json({
+        success: false,
+        error: 'Service Unavailable',
+        message: 'Database not configured'
+      }, 503);
+    }
+
+    const body = await c.req.json();
+    const settings: TrafficSettings = {
+      enabled: body.enabled || false,
+      limit: body.limit || 0,
+      resetCycle: body.resetCycle || 'monthly'
+    };
+
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
+    const result = await customSubsRepo.updateTrafficSettings(uuid, settings);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Update Failed',
+        message: result.error || 'Failed to update traffic settings'
+      }, 500);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Traffic settings updated successfully'
+    });
+
+  } catch (error) {
+    console.error('更新流量设置失败:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to update traffic settings'
+    }, 500);
+  }
+});
+
+// 重置订阅流量
+trafficManagementRouter.post('/:uuid/traffic/reset', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+    const db = c.get('db');
+
+    if (!db) {
+      return c.json({
+        success: false,
+        error: 'Service Unavailable',
+        message: 'Database not configured'
+      }, 503);
+    }
+
+    const customSubsRepo = new CustomSubscriptionsRepository(db);
+    const result = await customSubsRepo.resetTraffic(uuid);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: 'Reset Failed',
+        message: result.error || 'Failed to reset traffic'
+      }, 500);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Traffic reset successfully'
+    });
+
+  } catch (error) {
+    console.error('重置流量失败:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to reset traffic'
+    }, 500);
+  }
+});
