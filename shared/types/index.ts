@@ -393,3 +393,27 @@ export interface DbResult<T = any> {
     rows_written?: number;
   };
 }
+
+// 流量管理相关类型
+export interface TrafficStats {
+  limit: number;           // 流量限制(字节)
+  used: number;           // 已使用流量(字节)
+  remaining: number;      // 剩余流量(字节)
+  percentage: number;     // 使用百分比
+  resetDate: string;      // 下次重置日期
+  resetCycle: string;     // 重置周期
+  enabled: boolean;       // 是否启用限制
+}
+
+export interface TrafficSettings {
+  enabled: boolean;       // 是否启用流量限制
+  limit: number;         // 流量限制(字节)
+  resetCycle: string;    // 重置周期: daily/weekly/monthly/manual
+}
+
+export type TrafficResetCycle = 'daily' | 'weekly' | 'monthly' | 'manual';
+
+export interface TrafficManagementProps {
+  subscription: CustomSubscription;
+  onUpdate?: () => void;
+}

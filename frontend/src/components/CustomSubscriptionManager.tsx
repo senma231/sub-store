@@ -28,13 +28,15 @@ import {
   EyeOutlined,
   QrcodeOutlined,
   LinkOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  DashboardOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode.react';
 import copy from 'copy-to-clipboard';
 import dayjs from 'dayjs';
 import type { CustomSubscription } from '@/types';
+import TrafficManagement from './TrafficManagement';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -220,6 +222,7 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
   const [qrCodeVisible, setQrCodeVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [trafficManagementVisible, setTrafficManagementVisible] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -313,6 +316,12 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
     setEditModalVisible(true);
   };
 
+  // 流量管理
+  const handleTrafficManagement = (subscription: CustomSubscription) => {
+    setSelectedSubscription(subscription);
+    setTrafficManagementVisible(true);
+  };
+
   // 表格列定义
   const columns = [
     {
@@ -401,6 +410,13 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
               type="text"
               icon={<EyeOutlined />}
               onClick={() => handleShowDetail(record)}
+            />
+          </Tooltip>
+          <Tooltip title="流量管理">
+            <Button
+              type="text"
+              icon={<DashboardOutlined />}
+              onClick={() => handleTrafficManagement(record)}
             />
           </Tooltip>
           <Tooltip title="编辑">
@@ -601,6 +617,22 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
           />
         )}
       </Modal>
+
+      {/* 流量管理模态框 */}
+      {selectedSubscription && (
+        <TrafficManagement
+          subscription={selectedSubscription}
+          visible={trafficManagementVisible}
+          onClose={() => {
+            setTrafficManagementVisible(false);
+            setSelectedSubscription(null);
+          }}
+          onUpdate={() => {
+            // 刷新订阅列表
+            queryClient.invalidateQueries({ queryKey: ['custom-subscriptions'] });
+          }}
+        />
+      )}
     </div>
   );
 };
