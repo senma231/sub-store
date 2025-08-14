@@ -1,9 +1,10 @@
 import { ProxyNode, VlessNode, VmessNode, TrojanNode, ShadowsocksNode } from '../../../shared/types';
+import { safeBase64Encode } from '../utils/helpers';
 
 // 转换为 Shadowrocket 配置
 export function toShadowrocketConfig(nodes: ProxyNode[]): string {
   const links = nodes.map(node => convertNodeToShadowrocketLink(node)).filter(Boolean);
-  return btoa(links.join('\n'));
+  return safeBase64Encode(links.join('\n'));
 }
 
 // 将节点转换为 Shadowrocket 链接
@@ -97,7 +98,7 @@ function buildVmessLink(node: VmessNode): string {
     config.type = node.grpcMode || 'gun';
   }
   
-  return 'vmess://' + btoa(JSON.stringify(config));
+  return 'vmess://' + safeBase64Encode(JSON.stringify(config));
 }
 
 // 构建 Trojan 链接
@@ -131,7 +132,7 @@ function buildTrojanLink(node: TrojanNode): string {
 
 // 构建 Shadowsocks 链接
 function buildShadowsocksLink(node: ShadowsocksNode): string {
-  const auth = btoa(`${node.method}:${node.password}`);
+  const auth = safeBase64Encode(`${node.method}:${node.password}`);
   const fragment = encodeURIComponent(node.name);
   
   let link = `ss://${auth}@${node.server}:${node.port}#${fragment}`;

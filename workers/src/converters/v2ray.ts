@@ -1,4 +1,5 @@
 import { ProxyNode, VlessNode, VmessNode, TrojanNode, ShadowsocksNode } from '../../../shared/types';
+import { safeBase64Encode } from '../utils/helpers';
 
 // V2Ray 配置接口
 interface V2RayConfig {
@@ -83,7 +84,7 @@ export function toV2rayConfig(nodes: ProxyNode[]): V2RayConfig {
 // 转换为 Base64 编码的订阅链接
 export function toV2rayBase64(nodes: ProxyNode[]): string {
   const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
-  return btoa(links.join('\n'));
+  return safeBase64Encode(links.join('\n'));
 }
 
 // 将节点转换为 V2Ray outbound 配置
@@ -259,7 +260,7 @@ function buildVmessLink(node: VmessNode): string {
     config.type = node.grpcMode || 'gun';
   }
   
-  return 'vmess://' + btoa(JSON.stringify(config));
+  return 'vmess://' + safeBase64Encode(JSON.stringify(config));
 }
 
 // 构建 Trojan 链接
@@ -298,7 +299,7 @@ function buildTrojanLink(node: TrojanNode): string {
 
 // 构建 Shadowsocks 链接
 function buildShadowsocksLink(node: ShadowsocksNode): string {
-  const auth = btoa(`${node.method}:${node.password}`);
+  const auth = safeBase64Encode(`${node.method}:${node.password}`);
   const fragment = encodeURIComponent(node.name);
   
   let link = `ss://${auth}@${node.server}:${node.port}#${fragment}`;

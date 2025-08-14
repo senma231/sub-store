@@ -3,6 +3,7 @@ import type { Env } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { CustomSubscriptionsRepository } from '../database/customSubscriptions';
 import { NodesRepository } from '../database/nodes';
+import { safeBase64Encode } from '../utils/helpers';
 
 export const customSubscriptionsRouter = new Hono<{ Bindings: Env }>();
 
@@ -117,7 +118,7 @@ customSubscriptionsRouter.post('/', async (c) => {
     // 将字符串转换为UTF-8字节，然后进行Base64编码
     const encoder = new TextEncoder();
     const bytes = encoder.encode(subscriptionDataString);
-    const encodedData = btoa(String.fromCharCode(...bytes));
+    const encodedData = safeBase64Encode(subscriptionDataString);
     const encodedUrl = `${baseUrl}/sub/encoded/${encodedData}`;
 
     return c.json({
@@ -290,7 +291,7 @@ export const generateCustomSubscriptionContent = (
     case 'v2ray': {
       // 生成V2Ray Base64格式
       const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
-      const content = btoa(links.join('\n'));
+      const content = safeBase64Encode(links.join('\n'));
 
       return {
         content,
@@ -339,7 +340,7 @@ export const generateCustomSubscriptionContent = (
     case 'shadowrocket': {
       // 生成Shadowrocket格式
       const links = nodes.map(node => convertNodeToShadowrocketLink(node)).filter(Boolean);
-      const content = btoa(links.join('\n'));
+      const content = safeBase64Encode(links.join('\n'));
 
       return {
         content,
@@ -467,7 +468,7 @@ function generateVmessLink(node: any): string {
     sni: node.sni || '',
   };
 
-  return `vmess://${btoa(JSON.stringify(vmessConfig))}`;
+  return `vmess://${safeBase64Encode(JSON.stringify(vmessConfig))}`;
 }
 
 // 生成Trojan链接
@@ -486,7 +487,7 @@ function generateTrojanLink(node: any): string {
 
 // 生成Shadowsocks链接
 function generateShadowsocksLink(node: any): string {
-  const userInfo = btoa(`${node.method}:${node.password}`);
+  const userInfo = safeBase64Encode(`${node.method}:${node.password}`);
   const fragment = encodeURIComponent(node.name);
 
   return `ss://${userInfo}@${node.server}:${node.port}#${fragment}`;

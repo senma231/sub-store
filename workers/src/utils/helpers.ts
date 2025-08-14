@@ -289,3 +289,48 @@ export function parseUserAgent(userAgent: string): {
   
   return { isMobile, isBot, browser, os };
 }
+
+// 安全的Base64编码函数，支持UTF-8字符
+export function safeBase64Encode(str: string): string {
+  try {
+    // 使用TextEncoder将UTF-8字符串转换为字节数组
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+
+    // 将字节数组转换为二进制字符串
+    let binaryString = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binaryString += String.fromCharCode(bytes[i]);
+    }
+
+    // 使用btoa编码二进制字符串
+    return btoa(binaryString);
+  } catch (error) {
+    console.error('Base64编码失败:', error);
+    // 如果编码失败，尝试移除非ASCII字符后再编码
+    const asciiStr = str.replace(/[^\x00-\x7F]/g, '?');
+    return btoa(asciiStr);
+  }
+}
+
+// 安全的Base64解码函数，支持UTF-8字符
+export function safeBase64Decode(base64Str: string): string {
+  try {
+    // 使用atob解码为二进制字符串
+    const binaryString = atob(base64Str);
+
+    // 将二进制字符串转换为字节数组
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // 使用TextDecoder将字节数组转换为UTF-8字符串
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  } catch (error) {
+    console.error('Base64解码失败:', error);
+    // 如果解码失败，直接使用atob
+    return atob(base64Str);
+  }
+}

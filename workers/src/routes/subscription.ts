@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env } from '../index';
 import { generateCustomSubscriptionContent } from './customSubscriptions';
+import { safeBase64Encode } from '../utils/helpers';
 // 移除已删除的customSubscriptions文件引用
 
 // 简化的节点类型
@@ -350,7 +351,7 @@ function generateSubscriptionContent(
 // 生成V2Ray订阅内容
 function generateV2raySubscription(nodes: SimpleNode[]): { content: string; contentType: string; filename: string } {
   const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
-  const content = btoa(links.join('\n'));
+  const content = safeBase64Encode(links.join('\n'));
 
   return {
     content,
@@ -409,7 +410,7 @@ function generateClashSubscription(nodes: SimpleNode[]): { content: string; cont
 // 生成Shadowrocket订阅内容
 function generateShadowrocketSubscription(nodes: SimpleNode[]): { content: string; contentType: string; filename: string } {
   const links = nodes.map(node => convertNodeToShadowrocketLink(node)).filter(Boolean);
-  const content = btoa(links.join('\n'));
+  const content = safeBase64Encode(links.join('\n'));
 
   return {
     content,
@@ -529,7 +530,7 @@ function generateVmessLink(node: SimpleNode): string {
     sni: node.sni || '',
   };
 
-  return `vmess://${btoa(JSON.stringify(vmessConfig))}`;
+  return `vmess://${safeBase64Encode(JSON.stringify(vmessConfig))}`;
 }
 
 // 生成Trojan链接
@@ -548,7 +549,7 @@ function generateTrojanLink(node: SimpleNode): string {
 
 // 生成Shadowsocks链接
 function generateShadowsocksLink(node: SimpleNode): string {
-  const userInfo = btoa(`${node.method}:${node.password}`);
+  const userInfo = safeBase64Encode(`${node.method}:${node.password}`);
   const fragment = encodeURIComponent(node.name);
 
   return `ss://${userInfo}@${node.server}:${node.port}#${fragment}`;
