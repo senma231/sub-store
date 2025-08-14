@@ -413,7 +413,8 @@ export interface TrafficSettings {
 
 export type TrafficResetCycle = 'daily' | 'weekly' | 'monthly' | 'manual';
 
+// 流量管理组件属性（注意：CustomSubscription类型在前端定义）
 export interface TrafficManagementProps {
-  subscription: CustomSubscription;
+  subscription: any; // 使用any类型避免循环依赖，实际类型为CustomSubscription
   onUpdate?: () => void;
 }

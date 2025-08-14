@@ -138,6 +138,12 @@ export interface CustomSubscription {
   updatedAt: string;
   accessCount: number;
   lastAccessAt?: string;
+  // 流量限制相关字段
+  trafficLimit?: number;        // 流量限制(字节)，0表示无限制
+  trafficUsed?: number;         // 已使用流量(字节)
+  trafficResetCycle?: string;   // 重置周期: daily/weekly/monthly/manual
+  trafficResetDate?: string;    // 下次重置日期
+  trafficEnabled?: boolean;     // 是否启用流量限制
 }
 
 export interface CreateCustomSubscriptionRequest {

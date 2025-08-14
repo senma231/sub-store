@@ -12,7 +12,6 @@ import {
   message,
   Space,
   Typography,
-  Divider,
   Statistic,
   Row,
   Col,
@@ -22,13 +21,12 @@ import {
 import {
   BarChartOutlined,
   ReloadOutlined,
-  SettingOutlined,
-  InfoCircleOutlined
+  SettingOutlined
 } from '@ant-design/icons';
-import { TrafficStats, TrafficSettings, TrafficResetCycle, CustomSubscription } from '../types';
+import { TrafficStats, TrafficSettings, CustomSubscription } from '../types';
 import api from '../services/api';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 interface TrafficManagementProps {
