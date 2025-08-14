@@ -332,11 +332,17 @@ subscriptionsRouter.post('/:id/update', async (c) => {
 
 // 解析订阅链接内容
 subscriptionsRouter.post('/parse', async (c) => {
+  console.log('🔍 [订阅解析] 开始处理解析请求');
+  console.log('🌐 [订阅解析] 请求来源:', c.req.header('origin'));
+  console.log('🌐 [订阅解析] 请求头:', Object.fromEntries(c.req.header()));
+
   try {
     const body = await c.req.json();
+    console.log('📋 [订阅解析] 请求体:', body);
 
     // 支持两种模式：URL解析或直接内容解析
     if (!body.url && !body.content) {
+      console.error('❌ [订阅解析] 参数验证失败: 缺少url或content');
       return c.json({
         success: false,
         error: 'Validation Error',

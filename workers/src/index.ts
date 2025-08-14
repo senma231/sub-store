@@ -48,6 +48,52 @@ declare module 'hono' {
 
 const app = new Hono<Env>();
 
+// 详细请求日志中间件
+app.use('*', async (c, next) => {
+  const startTime = Date.now();
+  const method = c.req.method;
+  const url = c.req.url;
+  const path = c.req.path;
+  const headers = Object.fromEntries(c.req.header());
+
+  console.log('🔍 [Worker请求] 收到请求:', {
+    method,
+    url,
+    path,
+    headers,
+    timestamp: new Date().toISOString()
+  });
+
+  // 如果是POST请求，尝试读取body（但不消费它）
+  if (method === 'POST' && headers['content-type']?.includes('application/json')) {
+    try {
+      const body = await c.req.json();
+      console.log('📋 [Worker请求] 请求体:', body);
+      // 重新设置请求体，因为已经被读取了
+      c.req = new Request(c.req.url, {
+        method: c.req.method,
+        headers: c.req.headers,
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      console.log('⚠️ [Worker请求] 无法解析请求体:', e);
+    }
+  }
+
+  await next();
+
+  const endTime = Date.now();
+  const duration = endTime - startTime;
+
+  console.log('✅ [Worker响应] 请求完成:', {
+    method,
+    path,
+    status: c.res.status,
+    duration: `${duration}ms`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // 数据库初始化中间件
 app.use('*', async (c, next) => {
   try {
