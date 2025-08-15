@@ -158,6 +158,27 @@ html, body {
   color: #e6edf3;
 }
 
+/* 布局修复 */
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-header {
+  padding: 0 16px !important;
+  height: 64px !important;
+  line-height: 64px !important;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ant-layout-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: calc(100vh - 64px) !important;
+  overflow: auto;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .ant-layout-sider {
@@ -165,11 +186,11 @@ html, body {
     height: 100vh;
     z-index: 999;
   }
-  
+
   .ant-layout-sider.ant-layout-sider-collapsed {
     transform: translateX(-100%);
   }
-  
+
   .ant-layout-content {
     margin-left: 0 !important;
   }

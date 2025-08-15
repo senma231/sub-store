@@ -117,7 +117,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', height: '100vh', overflow: 'hidden' }}>
       <Sider
         trigger={null}
         collapsible
@@ -182,6 +182,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Layout style={{
         marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
         transition: 'margin-left 0.3s ease',
+        height: '100vh',
+        overflow: 'hidden',
       }}>
         {/* 顶部导航 */}
         <Header style={{
@@ -191,6 +193,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          height: 64,
+          lineHeight: '64px',
         }}>
           <Button
             type="text"
@@ -228,8 +232,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Layout.Content style={{
           margin: 0,
           padding: 0,
-          minHeight: 'calc(100vh - 64px)', // 减去Header高度
+          minHeight: 'calc(100vh - 64px)',
           background: token.colorBgLayout,
+          overflow: 'auto',
         }}>
           {children}
         </Layout.Content>
