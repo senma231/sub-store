@@ -44,7 +44,7 @@ const DashboardPage: React.FC = () => {
   const totalRequests = stats?.totalRequests || 0;
 
   return (
-    <div>
+    <div style={{ padding: '24px' }}>
       {/* 页面标题 */}
       <div style={{ marginBottom: 24 }}>
         <Title level={2} style={{ margin: 0 }}>

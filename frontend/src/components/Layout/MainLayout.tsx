@@ -117,7 +117,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh', height: '100vh', overflow: 'hidden' }}>
+    <Layout style={{ minHeight: '100vh' }}>
       <Sider
         trigger={null}
         collapsible
@@ -182,8 +182,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Layout style={{
         marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
         transition: 'margin-left 0.3s ease',
-        height: '100vh',
-        overflow: 'hidden',
       }}>
         {/* 顶部导航 */}
         <Header style={{
@@ -193,8 +191,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: 64,
-          lineHeight: '64px',
         }}>
           <Button
             type="text"
@@ -229,21 +225,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Header>
 
         {/* 主要内容区域 */}
-        <Layout.Content
-          className="main-content-area"
-          style={{
-            margin: 0,
-            padding: 0,
-            minHeight: 'calc(100vh - 64px)',
-            maxHeight: 'calc(100vh - 64px)',
-            background: token.colorBgLayout,
-            overflow: 'auto',
-            position: 'relative',
-          }}
-        >
-          <div style={{ padding: '24px', minHeight: '100%' }}>
-            {children}
-          </div>
+        <Layout.Content style={{
+          background: token.colorBgLayout,
+        }}>
+          {children}
         </Layout.Content>
       </Layout>
 

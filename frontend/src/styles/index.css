@@ -158,45 +158,13 @@ html, body {
   color: #e6edf3;
 }
 
-/* 布局修复 - 使用更强的选择器 */
+/* 简单布局修复 */
 .ant-layout {
-  min-height: 100vh !important;
-}
-
-.ant-layout .ant-layout {
-  height: 100vh !important;
-  overflow: hidden !important;
-}
-
-.ant-layout-header {
-  padding: 0 16px !important;
-  height: 64px !important;
-  line-height: 64px !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 100 !important;
-  margin: 0 !important;
-  border-bottom: 1px solid #f0f0f0 !important;
+  min-height: 100vh;
 }
 
 .ant-layout-content {
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: calc(100vh - 64px) !important;
-  max-height: calc(100vh - 64px) !important;
-  overflow: auto !important;
-  background: #f0f2f5 !important;
-}
-
-/* 强制移除任何可能的间距 */
-.ant-layout-header + .ant-layout-content {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-/* 确保内容区域的子元素正确显示 */
-.ant-layout-content > div {
-  padding: 24px !important;
+  padding: 24px;
 }
 
 /* 响应式设计 */
