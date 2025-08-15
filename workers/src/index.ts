@@ -162,8 +162,10 @@ app.use('*', cors({
   origin: [
     'https://sub.senma.io',
     'https://sub-store-frontend.pages.dev',
-    'https://ba25fae9.sub-store-frontend.pages.dev', // 最新部署域名 (7c1e6e5)
-    'https://b6f5b8a8.sub-store-frontend.pages.dev', // 之前部署域名 (fbb1782)
+    'https://db9b8988.sub-store-frontend.pages.dev', // 最新部署域名 (32c0617)
+    'https://3d3f7c56.sub-store-frontend.pages.dev', // 之前部署域名 (31135bd)
+    'https://ba25fae9.sub-store-frontend.pages.dev', // 更早部署域名 (7c1e6e5)
+    'https://b6f5b8a8.sub-store-frontend.pages.dev', // 更早部署域名 (fbb1782)
     'https://1470b94d.sub-store-frontend.pages.dev', // 更早部署域名 (f26f722)
     'https://2265c2d9.sub-store-frontend.pages.dev', // 更早部署域名 (84f7900)
     'http://localhost:3000',

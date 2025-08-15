@@ -229,14 +229,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Header>
 
         {/* 主要内容区域 */}
-        <Layout.Content style={{
-          margin: 0,
-          padding: 0,
-          minHeight: 'calc(100vh - 64px)',
-          background: token.colorBgLayout,
-          overflow: 'auto',
-        }}>
-          {children}
+        <Layout.Content
+          className="main-content-area"
+          style={{
+            margin: 0,
+            padding: 0,
+            minHeight: 'calc(100vh - 64px)',
+            maxHeight: 'calc(100vh - 64px)',
+            background: token.colorBgLayout,
+            overflow: 'auto',
+            position: 'relative',
+          }}
+        >
+          <div style={{ padding: '24px', minHeight: '100%' }}>
+            {children}
+          </div>
         </Layout.Content>
       </Layout>
 
