@@ -124,25 +124,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <Layout>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        style={{
-          background: token.colorBgContainer,
-          borderRight: `1px solid ${token.colorBorder}`,
-          ...(isMobile && {
-            position: 'fixed',
-            height: '100vh',
-            zIndex: 1000,
-            transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
-            transition: 'transform 0.3s ease',
-          }),
-        }}
-        theme="light"
-        width={200}
-      >
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+    }}>
+      {/* 侧边栏 */}
+      <div style={{
+        width: isMobile ? (collapsed ? '0px' : '200px') : (collapsed ? '80px' : '200px'),
+        height: '100vh',
+        background: token.colorBgContainer,
+        borderRight: `1px solid ${token.colorBorder}`,
+        transition: 'width 0.3s ease',
+        overflow: 'hidden',
+        position: isMobile ? 'fixed' : 'relative',
+        zIndex: isMobile ? 1000 : 'auto',
+        left: 0,
+        top: 0,
+      }}>
         {/* Logo */}
         <div style={{
           height: 64,
@@ -184,20 +184,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             background: 'transparent',
           }}
         />
-      </Sider>
+      </div>
 
-      <Layout style={{
-        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
-        transition: 'margin-left 0.3s ease',
+      {/* 主要内容区域 */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        marginLeft: isMobile ? '0' : '0', // 不需要margin，因为用的是flex布局
       }}>
-        {/* 顶部导航 */}
-        <Header style={{
+        {/* 顶部导航栏 */}
+        <div style={{
+          height: '64px',
           padding: '0 16px',
           background: token.colorBgContainer,
           borderBottom: `1px solid ${token.colorBorder}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
           <Button
             type="text"
@@ -205,8 +211,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             onClick={() => setCollapsed(!collapsed)}
             style={{
               fontSize: '16px',
-              width: 64,
-              height: 64,
+              width: '64px',
+              height: '64px',
             }}
           />
 
@@ -229,18 +235,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </Button>
             </Dropdown>
           </Space>
-        </Header>
+        </div>
 
-        {/* 主要内容区域 */}
-        <Layout.Content style={{
+        {/* 内容区域 */}
+        <div style={{
+          flex: 1,
           padding: '24px',
-          margin: '0',
           backgroundColor: '#f0f2f5',
-          minHeight: 'calc(100vh - 64px)',
+          overflow: 'auto',
         }}>
           {children}
-        </Layout.Content>
-      </Layout>
+        </div>
+      </div>
 
       {/* 移动端遮罩层 */}
       {isMobile && !collapsed && (
@@ -257,7 +263,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           onClick={() => setCollapsed(true)}
         />
       )}
-    </Layout>
+    </div>
   );
 };
 
