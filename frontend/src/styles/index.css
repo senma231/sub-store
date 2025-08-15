@@ -158,14 +158,27 @@ html, body {
   color: #e6edf3;
 }
 
-/* 基础布局 */
+/* 强制布局修复 */
 .ant-layout {
-  min-height: 100vh;
+  min-height: 100vh !important;
 }
 
 .ant-layout-content {
-  padding: 24px;
-  background: #f0f2f5;
+  padding: 24px !important;
+  margin: 0 !important;
+  background: #f0f2f5 !important;
+  min-height: calc(100vh - 64px) !important;
+}
+
+/* 强制移除任何可能的间距 */
+.ant-layout-header {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.ant-layout-header + .ant-layout-content {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
 }
 
 /* 响应式设计 */
