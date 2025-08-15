@@ -157,18 +157,21 @@ app.use('*', prettyJSON());
 // 基础安全防护（只保留必要的）
 app.use('*', ddosProtectionMiddleware);      // DDoS防护（保留）
 
-// CORS 配置 - 简化版本避免迭代器错误
+// CORS 配置 - 包含所有可能的域名
 app.use('*', cors({
   origin: [
     'https://sub.senma.io',
     'https://sub-store-frontend.pages.dev',
-    'https://2265c2d9.sub-store-frontend.pages.dev', // 新的手动部署域名
+    'https://1470b94d.sub-store-frontend.pages.dev', // 最新部署域名
+    'https://2265c2d9.sub-store-frontend.pages.dev', // 之前的部署域名
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://localhost:3000'
+    'https://localhost:3000',
+    'http://localhost:5173', // Vite默认端口
+    'http://127.0.0.1:5173'
   ],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true,
 }));
 

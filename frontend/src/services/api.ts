@@ -2,8 +2,10 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 import { message } from 'antd';
 import type { ApiResponse } from '@/types';
 
-// API 基础配置 - 临时硬编码确保正确的API地址
-const API_BASE_URL = 'https://sub-api.senma.io';
+// API 基础配置 - 临时使用本地开发环境绕过网络问题
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8787'  // 本地开发环境
+  : 'https://sub-api.senma.io';  // 生产环境
 
 // 创建 axios 实例
 const api: AxiosInstance = axios.create({

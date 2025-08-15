@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Store 认证测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .log { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Sub-Store 认证修复测试</h1>
+    
+    <div class="test-section info">
+        <h3>📋 测试说明</h3>
+        <p>此页面用于测试Sub-Store认证问题的修复情况</p>
+        <ul>
+            <li>✅ JWT_SECRET环境变量已设置</li>
+            <li>✅ CORS配置已更新</li>
+            <li>✅ Workers已重新部署</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 API连接测试</h3>
+        <button onclick="testHealthCheck()">测试健康检查</button>
+        <button onclick="testLogin()">测试登录</button>
+        <button onclick="testVerifyToken()">测试Token验证</button>
+        <button onclick="clearStorage()">清除存储</button>
+        <div id="testResults" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 当前状态</h3>
+        <div id="currentStatus"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://sub-api.senma.io';
+        const ADMIN_TOKEN = 'Sz@2400104';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function updateStatus() {
+            const token = localStorage.getItem('auth_token');
+            const status = document.getElementById('currentStatus');
+            status.innerHTML = `
+                <p><strong>认证Token:</strong> ${token ? '✅ 已设置' : '❌ 未设置'}</p>
+                <p><strong>Token长度:</strong> ${token ? token.length : 0}</p>
+                <p><strong>API地址:</strong> ${API_BASE}</p>
+            `;
+        }
+
+        async function testHealthCheck() {
+            log('🔍 测试健康检查...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ 健康检查成功: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    log(`❌ 健康检查失败: ${response.status} - ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 健康检查错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            log('🔐 测试登录...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: ADMIN_TOKEN
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    localStorage.setItem('auth_token', data.data.token);
+                    log(`✅ 登录成功! Token: ${data.data.token.substring(0, 20)}...`, 'success');
+                    updateStatus();
+                } else {
+                    log(`❌ 登录失败: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 登录错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVerifyToken() {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                log('❌ 没有找到认证Token，请先登录', 'error');
+                return;
+            }
+
+            log('🔍 测试Token验证...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    log(`✅ Token验证成功! 用户: ${JSON.stringify(data.data.user)}`, 'success');
+                } else {
+                    log(`❌ Token验证失败: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Token验证错误: ${error.message}`, 'error');
+            }
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('🧹 已清除所有存储数据', 'info');
+            updateStatus();
+        }
+
+        // 页面加载时更新状态
+        window.onload = function() {
+            updateStatus();
+            log('📱 测试页面已加载，可以开始测试', 'info');
+        };
+    </script>
+</body>
+</html>
