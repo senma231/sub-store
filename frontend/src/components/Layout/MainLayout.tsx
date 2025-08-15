@@ -28,24 +28,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // 移动端默认折叠侧边栏
-  useEffect(() => {
-    if (isMobile) {
-      setCollapsed(true);
-    }
-  }, [isMobile]);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { token } = theme.useToken();
 
-  // 检测移动端并自动折叠侧边栏
+  // 检测移动端
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
-      if (mobile && !collapsed) {
+      // 移动端默认折叠，但不强制覆盖用户操作
+      if (mobile && !isMobile) {
         setCollapsed(true);
       }
     };
@@ -54,7 +49,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     window.addEventListener('resize', checkMobile);
 
     return () => window.removeEventListener('resize', checkMobile);
-  }, [collapsed]);
+  }, [isMobile]);
 
   // 菜单项配置
   const menuItems = [
@@ -131,20 +126,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       overflow: 'hidden',
     }}>
       {/* 侧边栏 */}
-      <div style={{
-        width: isMobile ? '200px' : (collapsed ? '80px' : '200px'),
-        height: '100vh',
-        background: token.colorBgContainer,
-        borderRight: `1px solid ${token.colorBorder}`,
-        transition: isMobile ? 'transform 0.3s ease' : 'width 0.3s ease',
-        overflow: 'hidden',
-        position: isMobile ? 'fixed' : 'relative',
-        zIndex: isMobile ? 1001 : 'auto',
-        left: 0,
-        top: 0,
-        flexShrink: 0,
-        transform: isMobile ? (collapsed ? 'translateX(-100%)' : 'translateX(0)') : 'none',
-      }}>
+      <div
+        style={{
+          width: isMobile ? '200px' : (collapsed ? '80px' : '200px'),
+          height: '100vh',
+          background: token.colorBgContainer,
+          borderRight: `1px solid ${token.colorBorder}`,
+          transition: isMobile ? 'transform 0.3s ease' : 'width 0.3s ease',
+          overflow: 'hidden',
+          position: isMobile ? 'fixed' : 'relative',
+          zIndex: isMobile ? 1001 : 'auto',
+          left: 0,
+          top: 0,
+          flexShrink: 0,
+          transform: isMobile ? (collapsed ? 'translateX(-100%)' : 'translateX(0)') : 'none',
+        }}
+        onClick={(e) => {
+          // 防止侧边栏内部点击关闭菜单
+          if (isMobile) {
+            e.stopPropagation();
+          }
+        }}
+      >
         {/* Logo */}
         <div style={{
           height: 64,
@@ -212,7 +215,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              console.log('汉堡菜单点击:', { isMobile, collapsed, newState: !collapsed });
+              setCollapsed(!collapsed);
+            }}
             style={{
               fontSize: '16px',
               width: '64px',
