@@ -162,8 +162,9 @@ app.use('*', cors({
   origin: [
     'https://sub.senma.io',
     'https://sub-store-frontend.pages.dev',
-    'https://1470b94d.sub-store-frontend.pages.dev', // 最新部署域名
-    'https://2265c2d9.sub-store-frontend.pages.dev', // 之前的部署域名
+    'https://b6f5b8a8.sub-store-frontend.pages.dev', // 最新部署域名
+    'https://1470b94d.sub-store-frontend.pages.dev', // 之前的部署域名
+    'https://2265c2d9.sub-store-frontend.pages.dev', // 更早的部署域名
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://localhost:3000',

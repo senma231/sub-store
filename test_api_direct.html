@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 直接测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .log { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 API 直接连接测试</h1>
+    
+    <div class="test-section info">
+        <h3>📋 测试目的</h3>
+        <p>测试不同API端点的连接情况，诊断CORS问题</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 API连接测试</h3>
+        <button onclick="testWorkersDirect()">测试Workers直接域名</button>
+        <button onclick="testCustomDomain()">测试自定义域名</button>
+        <button onclick="testCORS()">测试CORS预检</button>
+        <button onclick="clearLogs()">清除日志</button>
+        <div id="testResults" class="log"></div>
+    </div>
+
+    <script>
+        const WORKERS_DIRECT = 'https://substore-api.senmago231.workers.dev';
+        const CUSTOM_DOMAIN = 'https://sub-api.senma.io';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        async function testWorkersDirect() {
+            log('🔍 测试Workers直接域名...', 'info');
+            try {
+                const response = await fetch(`${WORKERS_DIRECT}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'https://sub.senma.io'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Workers直接域名成功: ${JSON.stringify(data)}`, 'success');
+                    log(`✅ CORS Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}`);
+                } else {
+                    log(`❌ Workers直接域名失败: ${response.status} - ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Workers直接域名错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCustomDomain() {
+            log('🔍 测试自定义域名...', 'info');
+            try {
+                const response = await fetch(`${CUSTOM_DOMAIN}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'https://sub.senma.io'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ 自定义域名成功: ${JSON.stringify(data)}`, 'success');
+                    log(`✅ CORS Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}`);
+                } else {
+                    log(`❌ 自定义域名失败: ${response.status} - ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ 自定义域名错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            log('🔍 测试CORS预检请求...', 'info');
+            
+            // 测试OPTIONS请求
+            try {
+                const response = await fetch(`${CUSTOM_DOMAIN}/api/stats`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'https://sub.senma.io',
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type, Authorization'
+                    }
+                });
+                
+                log(`✅ CORS预检状态: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`✅ CORS预检Headers: ${JSON.stringify(Object.fromEntries([...response.headers.entries()]))}`);
+                
+                // 检查关键的CORS头部
+                const allowOrigin = response.headers.get('Access-Control-Allow-Origin');
+                const allowMethods = response.headers.get('Access-Control-Allow-Methods');
+                const allowHeaders = response.headers.get('Access-Control-Allow-Headers');
+                
+                log(`🔍 Access-Control-Allow-Origin: ${allowOrigin}`, allowOrigin ? 'success' : 'error');
+                log(`🔍 Access-Control-Allow-Methods: ${allowMethods}`, allowMethods ? 'success' : 'error');
+                log(`🔍 Access-Control-Allow-Headers: ${allowHeaders}`, allowHeaders ? 'success' : 'error');
+                
+            } catch (error) {
+                log(`❌ CORS预检错误: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载时显示当前域名
+        window.onload = function() {
+            log(`📱 当前页面域名: ${window.location.origin}`, 'info');
+            log(`🎯 Workers直接域名: ${WORKERS_DIRECT}`, 'info');
+            log(`🎯 自定义域名: ${CUSTOM_DOMAIN}`, 'info');
+        };
+    </script>
+</body>
+</html>
