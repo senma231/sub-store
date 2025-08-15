@@ -27,6 +27,13 @@ interface MainLayoutProps {
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // 移动端默认折叠侧边栏
+  useEffect(() => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  }, [isMobile]);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -182,6 +189,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Layout style={{
         marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
         transition: 'margin-left 0.3s ease',
+        minHeight: '100vh',
       }}>
         {/* 顶部导航 */}
         <Header style={{
@@ -227,6 +235,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* 主要内容区域 */}
         <Layout.Content style={{
           background: token.colorBgLayout,
+          padding: '24px',
+          minHeight: 'calc(100vh - 64px)',
         }}>
           {children}
         </Layout.Content>
