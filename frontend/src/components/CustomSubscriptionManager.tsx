@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Table,
@@ -19,7 +19,9 @@ import {
   Select,
   DatePicker,
   Transfer,
-  Spin
+  Spin,
+  Dropdown,
+  MenuProps
 } from 'antd';
 import {
   CopyOutlined,
@@ -29,7 +31,8 @@ import {
   QrcodeOutlined,
   LinkOutlined,
   BarChartOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  MoreOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode.react';
@@ -223,8 +226,21 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [trafficManagementVisible, setTrafficManagementVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // 检测移动端
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 获取自定义订阅列表
   const { data: subscriptions, isLoading } = useQuery({
@@ -322,7 +338,61 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
     setTrafficManagementVisible(true);
   };
 
-  // 表格列定义
+  // 创建移动端操作菜单
+  const createMobileActionMenu = (record: CustomSubscription): MenuProps => ({
+    items: [
+      {
+        key: 'copy',
+        icon: <CopyOutlined />,
+        label: '复制链接',
+        onClick: () => handleCopyUrl(record),
+      },
+      {
+        key: 'qrcode',
+        icon: <QrcodeOutlined />,
+        label: '二维码',
+        onClick: () => handleShowQRCode(record),
+      },
+      {
+        key: 'detail',
+        icon: <EyeOutlined />,
+        label: '详情',
+        onClick: () => handleShowDetail(record),
+      },
+      {
+        key: 'traffic',
+        icon: <DashboardOutlined />,
+        label: '流量管理',
+        onClick: () => handleTrafficManagement(record),
+      },
+      {
+        key: 'edit',
+        icon: <EditOutlined />,
+        label: '编辑',
+        onClick: () => handleEdit(record),
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: '删除',
+        danger: true,
+        onClick: () => {
+          Modal.confirm({
+            title: '确定要删除这个自定义订阅吗？',
+            content: `订阅名称：${record.name}`,
+            okText: '确定',
+            cancelText: '取消',
+            onOk: () => deleteMutation.mutate(record.id),
+          });
+        },
+      },
+    ],
+  });
+
+  // 表格列定义 - 响应式
   const columns = [
     {
       title: '订阅名称',
@@ -330,51 +400,60 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
       key: 'name',
       ellipsis: true,
       render: (text: string, record: CustomSubscription) => (
-        <Space>
+        <Space direction={isMobile ? 'vertical' : 'horizontal'} size="small">
           <span>{text}</span>
           <Tag color="blue">{record.format.toUpperCase()}</Tag>
+          {isMobile && (
+            <Space size="small">
+              <Tag color="green">{record.nodeIds.length} 个节点</Tag>
+              <Text type="secondary">{record.accessCount} 次访问</Text>
+            </Space>
+          )}
         </Space>
       ),
     },
-    {
-      title: '节点数量',
-      dataIndex: 'nodeIds',
-      key: 'nodeCount',
-      width: 100,
-      render: (nodeIds: string[]) => (
-        <Tag color="green">{nodeIds.length} 个</Tag>
-      ),
-    },
-    {
-      title: '访问次数',
-      dataIndex: 'accessCount',
-      key: 'accessCount',
-      width: 100,
-      render: (count: number) => (
-        <Text>{count}</Text>
-      ),
-    },
-    {
-      title: '最后访问',
-      dataIndex: 'lastAccessAt',
-      key: 'lastAccessAt',
-      width: 150,
-      render: (date: string) => (
-        date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '从未访问'
-      ),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 150,
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
-    },
+    // 桌面端显示的列
+    ...(!isMobile ? [
+      {
+        title: '节点数量',
+        dataIndex: 'nodeIds',
+        key: 'nodeCount',
+        width: 100,
+        render: (nodeIds: string[]) => (
+          <Tag color="green">{nodeIds.length} 个</Tag>
+        ),
+      },
+      {
+        title: '访问次数',
+        dataIndex: 'accessCount',
+        key: 'accessCount',
+        width: 100,
+        render: (count: number) => (
+          <Text>{count}</Text>
+        ),
+      },
+      {
+        title: '最后访问',
+        dataIndex: 'lastAccessAt',
+        key: 'lastAccessAt',
+        width: 150,
+        render: (date: string) => (
+          date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '从未访问'
+        ),
+      },
+      {
+        title: '创建时间',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        width: 150,
+        render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
+      },
+    ] : []),
     {
       title: '有效期',
       dataIndex: 'expiresAt',
       key: 'expiresAt',
-      width: 120,
+      width: isMobile ? 80 : 120,
       render: (date: string) => {
         if (!date) return <Tag color="green">永久</Tag>;
         const isExpired = dayjs(date).isBefore(dayjs());
@@ -388,61 +467,82 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
     {
       title: '操作',
       key: 'actions',
-      width: 200,
-      render: (_: any, record: CustomSubscription) => (
-        <Space size="small">
-          <Tooltip title="复制链接">
-            <Button
-              type="text"
-              icon={<CopyOutlined />}
-              onClick={() => handleCopyUrl(record)}
-            />
-          </Tooltip>
-          <Tooltip title="二维码">
-            <Button
-              type="text"
-              icon={<QrcodeOutlined />}
-              onClick={() => handleShowQRCode(record)}
-            />
-          </Tooltip>
-          <Tooltip title="详情">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleShowDetail(record)}
-            />
-          </Tooltip>
-          <Tooltip title="流量管理">
-            <Button
-              type="text"
-              icon={<DashboardOutlined />}
-              onClick={() => handleTrafficManagement(record)}
-            />
-          </Tooltip>
-          <Tooltip title="编辑">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="确定要删除这个自定义订阅吗？"
-            onConfirm={() => deleteMutation.mutate(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
-            <Tooltip title="删除">
+      width: isMobile ? 60 : 200,
+      fixed: isMobile ? ('right' as const) : undefined,
+      render: (_: any, record: CustomSubscription) => {
+        if (isMobile) {
+          // 移动端使用下拉菜单
+          return (
+            <Dropdown
+              menu={createMobileActionMenu(record)}
+              trigger={['click']}
+              placement="bottomRight"
+            >
               <Button
                 type="text"
-                danger
-                icon={<DeleteOutlined />}
-                loading={deleteMutation.isPending}
+                icon={<MoreOutlined />}
+                size="small"
+              />
+            </Dropdown>
+          );
+        }
+
+        // 桌面端显示所有按钮
+        return (
+          <Space size="small">
+            <Tooltip title="复制链接">
+              <Button
+                type="text"
+                icon={<CopyOutlined />}
+                onClick={() => handleCopyUrl(record)}
               />
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+            <Tooltip title="二维码">
+              <Button
+                type="text"
+                icon={<QrcodeOutlined />}
+                onClick={() => handleShowQRCode(record)}
+              />
+            </Tooltip>
+            <Tooltip title="详情">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => handleShowDetail(record)}
+              />
+            </Tooltip>
+            <Tooltip title="流量管理">
+              <Button
+                type="text"
+                icon={<DashboardOutlined />}
+                onClick={() => handleTrafficManagement(record)}
+              />
+            </Tooltip>
+            <Tooltip title="编辑">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="确定要删除这个自定义订阅吗？"
+              onConfirm={() => deleteMutation.mutate(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Tooltip title="删除">
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteMutation.isPending}
+                />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -506,12 +606,14 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
             rowKey="id"
             loading={isLoading}
             pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showQuickJumper: true,
+              pageSize: isMobile ? 5 : 10,
+              showSizeChanger: !isMobile,
+              showQuickJumper: !isMobile,
               showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+              size: isMobile ? 'small' : 'default',
             }}
-            scroll={{ x: 800 }}
+            scroll={{ x: isMobile ? 350 : 800 }}
+            size={isMobile ? 'small' : 'middle'}
           />
         )}
       </Card>

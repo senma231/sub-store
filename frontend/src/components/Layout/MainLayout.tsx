@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Button, Dropdown, Avatar, Space, Typography, theme } from 'antd';
 import {
   MenuFoldOutlined,
@@ -26,11 +26,28 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const { token } = theme.useToken();
+
+  // 检测移动端并自动折叠侧边栏
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile && !collapsed) {
+        setCollapsed(true);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [collapsed]);
 
   // 菜单项配置
   const menuItems = [
@@ -101,15 +118,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
+      <Sider
+        trigger={null}
+        collapsible
         collapsed={collapsed}
         style={{
           background: token.colorBgContainer,
           borderRight: `1px solid ${token.colorBorder}`,
+          ...(isMobile && {
+            position: 'fixed',
+            height: '100vh',
+            zIndex: 1000,
+            transform: collapsed ? 'translateX(-100%)' : 'translateX(0)',
+            transition: 'transform 0.3s ease',
+          }),
         }}
         theme="light"
+        width={isMobile ? 200 : 200}
       >
         {/* Logo */}
         <div style={{
@@ -154,7 +179,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         />
       </Sider>
 
-      <Layout>
+      <Layout style={{
+        marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
+        transition: 'margin-left 0.3s ease',
+      }}>
         {/* 顶部导航 */}
         <Header style={{
           padding: '0 16px',
@@ -199,6 +227,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* 主要内容区域 */}
         {children}
       </Layout>
+
+      {/* 移动端遮罩层 */}
+      {isMobile && !collapsed && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.45)',
+            zIndex: 999,
+          }}
+          onClick={() => setCollapsed(true)}
+        />
+      )}
     </Layout>
   );
 };

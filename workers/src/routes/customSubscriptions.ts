@@ -4,6 +4,11 @@ import { authMiddleware } from '../middleware/auth';
 import { CustomSubscriptionsRepository } from '../database/customSubscriptions';
 import { NodesRepository } from '../database/nodes';
 import { safeBase64Encode } from '../utils/helpers';
+import {
+  encryptNodeContent,
+  obfuscateNodeConfig,
+  generateDecoyNodes
+} from '../utils/subscriptionSecurity';
 
 export const customSubscriptionsRouter = new Hono<{ Bindings: Env }>();
 
@@ -285,13 +290,31 @@ customSubscriptionsRouter.delete('/:uuid', async (c) => {
 // 生成自定义订阅内容的辅助函数
 export const generateCustomSubscriptionContent = (
   nodes: any[],
-  format: string
+  format: string,
+  options: { encrypt?: boolean; secret?: string; addDecoys?: boolean } = {}
 ): { content: string; contentType: string; filename: string } => {
   switch (format) {
     case 'v2ray': {
       // 生成V2Ray Base64格式
-      const links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
-      const content = safeBase64Encode(links.join('\n'));
+      let links = nodes.map(node => convertNodeToV2rayLink(node)).filter(Boolean);
+
+      // 添加诱饵节点（迷惑爬虫）
+      if (options.addDecoys) {
+        const decoyNodes = generateDecoyNodes(2);
+        links = [...decoyNodes, ...links, ...generateDecoyNodes(1)];
+      }
+
+      let rawContent = links.join('\n');
+
+      // 混淆处理
+      rawContent = obfuscateNodeConfig(rawContent);
+
+      // 加密处理
+      if (options.encrypt && options.secret) {
+        rawContent = encryptNodeContent(rawContent, options.secret);
+      }
+
+      const content = safeBase64Encode(rawContent);
 
       return {
         content,

@@ -22,10 +22,18 @@ import { customSubscriptionsRouter } from './routes/customSubscriptions';
 import { subscriptionsRouter } from './routes/subscriptions';
 import { trafficManagementRouter } from './routes/trafficManagement';
 import { publicSubscriptionsRouter } from './routes/publicSubscriptions';
+import { secureSubscriptionsRouter } from './routes/secureSubscriptions';
 import { migrationRouter } from './routes/migration';
+import { securityRouter } from './routes/security';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
+import {
+  ddosProtectionMiddleware,
+  sensitiveInfoProtectionMiddleware,
+  apiAccessControlMiddleware,
+  antiScanningMiddleware
+} from './middleware/security';
 
 export interface Env extends Record<string, unknown> {
   DB: D1Database;
@@ -146,9 +154,19 @@ app.use('*', logger());
 app.use('*', secureHeaders());
 app.use('*', prettyJSON());
 
+// 基础安全防护（只保留必要的）
+app.use('*', ddosProtectionMiddleware);      // DDoS防护（保留）
+
 // CORS 配置 - 简化版本避免迭代器错误
 app.use('*', cors({
-  origin: ['https://sub.senma.io', 'https://sub-store-frontend.pages.dev', 'http://localhost:3000', 'http://127.0.0.1:3000', 'https://localhost:3000'],
+  origin: [
+    'https://sub.senma.io',
+    'https://sub-store-frontend.pages.dev',
+    'https://2265c2d9.sub-store-frontend.pages.dev', // 新的手动部署域名
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://localhost:3000'
+  ],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
@@ -169,6 +187,9 @@ app.route('/sub', subscriptionRouter);
 // 自定义订阅公开访问路由 (无需认证)
 app.route('/subscriptions', publicSubscriptionsRouter);
 
+// 安全加密订阅路由 (无需认证，但有反爬保护)
+app.route('/secure', secureSubscriptionsRouter);
+
 // 订阅解析路由 (无需认证，用于前端解析订阅链接)
 app.route('/subscription', subscriptionsRouter);
 
@@ -183,6 +204,7 @@ app.route('/api/subscriptions', trafficManagementRouter);  // 流量管理路由
 app.route('/api/subscriptions', customSubscriptionsRouter);
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 app.route('/api/migration', migrationRouter);
+app.route('/api/security', securityRouter);
 
 // 根路径
 app.get('/', (c) => {

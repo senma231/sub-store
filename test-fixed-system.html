@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>修复后的系统测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .info { background-color: #d1ecf1; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 2px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🔧 修复后的Sub-Store系统测试</h1>
+    
+    <div class="test-section">
+        <h2>🔐 1. 登录功能测试</h2>
+        <p>测试登录是否恢复正常，不再被反爬机制影响</p>
+        <button onclick="testLogin()">测试登录</button>
+        <div id="login-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 2. 管理功能测试</h2>
+        <p>测试节点管理、订阅管理等功能是否正常</p>
+        <button onclick="testManagementAPI()">测试管理API</button>
+        <div id="management-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🛡️ 3. 精准反爬机制测试</h2>
+        <p>测试新的订阅专用反爬机制</p>
+        <button onclick="testAntiCrawler()">测试反爬机制</button>
+        <div id="anticrawler-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔒 4. 节点加密测试</h2>
+        <p>测试新的节点加密保护机制</p>
+        <button onclick="testNodeEncryption()">测试节点加密</button>
+        <div id="encryption-results"></div>
+    </div>
+
+    <script>
+        function addResult(containerId, title, content, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<h4>${title}</h4><pre>${content}</pre>`;
+            container.appendChild(div);
+        }
+
+        async function testLogin() {
+            const container = 'login-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                addResult(container, '🚀 测试登录功能', '正在测试...', 'info');
+                
+                const response = await fetch('https://sub-api.senma.io/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'Sz@2400104'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.data && data.data.token && data.data.token !== '[REDACTED]') {
+                    addResult(container, '✅ 登录功能正常', 
+                        `状态码: ${response.status}\n` +
+                        `成功: ${data.success}\n` +
+                        `Token存在: 是\n` +
+                        `Token长度: ${data.data.token.length}字符\n` +
+                        `用户: ${data.data.user.username}`, 'success');
+                } else {
+                    addResult(container, '❌ 登录功能异常', 
+                        `状态码: ${response.status}\n` +
+                        `响应: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(container, '❌ 登录测试失败', error.message, 'error');
+            }
+        }
+
+        async function testManagementAPI() {
+            const container = 'management-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                // 先登录获取token
+                const loginResponse = await fetch('https://sub-api.senma.io/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: 'Sz@2400104' })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (!loginData.success) {
+                    addResult(container, '❌ 无法获取认证token', '登录失败', 'error');
+                    return;
+                }
+                
+                const token = loginData.data.token;
+                
+                // 测试节点列表API
+                const nodesResponse = await fetch('https://sub-api.senma.io/api/nodes', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (nodesResponse.ok) {
+                    const nodesData = await nodesResponse.json();
+                    addResult(container, '✅ 节点管理API正常', 
+                        `状态码: ${nodesResponse.status}\n` +
+                        `节点数量: ${nodesData.data ? nodesData.data.length : 0}`, 'success');
+                } else {
+                    addResult(container, '❌ 节点管理API异常', 
+                        `状态码: ${nodesResponse.status}`, 'error');
+                }
+                
+                // 测试订阅列表API
+                const subsResponse = await fetch('https://sub-api.senma.io/api/subscriptions', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (subsResponse.ok) {
+                    const subsData = await subsResponse.json();
+                    addResult(container, '✅ 订阅管理API正常', 
+                        `状态码: ${subsResponse.status}\n` +
+                        `订阅数量: ${subsData.data ? subsData.data.length : 0}`, 'success');
+                } else {
+                    addResult(container, '❌ 订阅管理API异常', 
+                        `状态码: ${subsResponse.status}`, 'error');
+                }
+                
+            } catch (error) {
+                addResult(container, '❌ 管理API测试失败', error.message, 'error');
+            }
+        }
+
+        async function testAntiCrawler() {
+            const container = 'anticrawler-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                // 测试1: 正常代理客户端访问
+                addResult(container, '🧪 测试正常代理客户端', '使用v2rayN User-Agent...', 'info');
+                
+                const normalResponse = await fetch('https://sub-api.senma.io/subscriptions/test-uuid/v2ray', {
+                    headers: { 'User-Agent': 'v2rayN/6.23' }
+                });
+                
+                addResult(container, '📊 正常客户端结果', 
+                    `状态码: ${normalResponse.status}\n` +
+                    `内容长度: ${normalResponse.headers.get('content-length') || 'unknown'}`, 
+                    normalResponse.status === 404 ? 'info' : 'success');
+                
+                // 测试2: 可疑爬虫访问
+                addResult(container, '🧪 测试可疑爬虫', '使用curl User-Agent...', 'info');
+                
+                const crawlerResponse = await fetch('https://sub-api.senma.io/subscriptions/test-uuid/v2ray', {
+                    headers: { 'User-Agent': 'curl/7.68.0' }
+                });
+                
+                const crawlerContent = await crawlerResponse.text();
+                
+                if (crawlerResponse.ok && crawlerContent.length === 0) {
+                    addResult(container, '✅ 反爬机制正常', 
+                        `状态码: ${crawlerResponse.status}\n` +
+                        `内容: 空（已拦截）\n` +
+                        `内容长度: ${crawlerContent.length}`, 'success');
+                } else {
+                    addResult(container, '⚠️ 反爬机制状态', 
+                        `状态码: ${crawlerResponse.status}\n` +
+                        `内容长度: ${crawlerContent.length}`, 'info');
+                }
+                
+            } catch (error) {
+                addResult(container, '❌ 反爬测试失败', error.message, 'error');
+            }
+        }
+
+        async function testNodeEncryption() {
+            const container = 'encryption-results';
+            document.getElementById(container).innerHTML = '';
+            
+            try {
+                addResult(container, '🔒 节点加密功能', '新的加密机制特性：\n' +
+                    '• 节点内容异或加密\n' +
+                    '• Base64 URL安全编码\n' +
+                    '• 动态签名验证\n' +
+                    '• 24小时链接过期\n' +
+                    '• 诱饵节点混淆\n' +
+                    '• 配置混淆处理', 'success');
+                
+                // 测试加密链接生成
+                const testData = {
+                    uuid: 'test-uuid-12345',
+                    format: 'v2ray'
+                };
+                
+                const response = await fetch('https://sub-api.senma.io/secure/generate-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Admin Sz@2400104'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        addResult(container, '✅ 加密链接生成正常', 
+                            `安全链接: ${data.data.secureUrl}\n` +
+                            `过期时间: ${data.data.expiresAt}\n` +
+                            `格式: ${data.data.format}`, 'success');
+                    } else {
+                        addResult(container, '⚠️ 加密链接生成', data.error || '未知错误', 'info');
+                    }
+                } else {
+                    addResult(container, '⚠️ 加密链接测试', `状态码: ${response.status}`, 'info');
+                }
+                
+            } catch (error) {
+                addResult(container, '❌ 加密测试失败', error.message, 'error');
+            }
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            const info = `
+🎯 测试目标：
+1. 验证登录功能恢复正常
+2. 确认管理功能不受影响  
+3. 验证精准反爬机制有效
+4. 测试新的节点加密保护
+
+🔧 修复内容：
+• 移除过度激进的安全中间件
+• 实现订阅专用的反爬机制
+• 添加节点内容加密保护
+• 保持必要的DDoS防护
+            `;
+            
+            document.body.insertAdjacentHTML('afterbegin', 
+                `<div class="result info"><h3>📋 测试说明</h3><pre>${info}</pre></div>`);
+        };
+    </script>
+</body>
+</html>

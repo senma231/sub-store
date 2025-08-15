@@ -3,8 +3,12 @@ import type { Env } from '../types';
 import { CustomSubscriptionsRepository } from '../database/customSubscriptions';
 import { NodesRepository } from '../database/nodes';
 import { generateCustomSubscriptionContent } from './customSubscriptions';
+import { createSubscriptionAntiCrawlerMiddleware } from '../utils/subscriptionSecurity';
 
 export const publicSubscriptionsRouter = new Hono<{ Bindings: Env }>();
+
+// 应用订阅专用的反爬虫中间件
+publicSubscriptionsRouter.use('*', createSubscriptionAntiCrawlerMiddleware());
 
 // 公开访问自定义订阅内容 - 不需要认证
 // 路由格式: /subscriptions/:uuid/:format
