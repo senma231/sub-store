@@ -200,6 +200,78 @@ app.route('/secure', secureSubscriptionsRouter);
 // 订阅解析路由 (无需认证，用于前端解析订阅链接)
 app.route('/subscription', subscriptionsRouter);
 
+// 时效性订阅访问路由 (无需认证，但有时效性验证)
+app.get('/s/:encoded', async (c) => {
+  try {
+    const encoded = c.req.param('encoded');
+    const signature = c.req.query('sig');
+    const timestamp = c.req.query('t');
+
+    if (!encoded || !signature) {
+      return c.text('Invalid subscription link', 400);
+    }
+
+    // 验证时效性链接
+    const secretKey = c.env.ADMIN_TOKEN || 'default-secret-key';
+    const validation = await validateTimedSubscription(encoded, signature, secretKey);
+
+    if (!validation) {
+      return c.text('Invalid or expired subscription link', 403);
+    }
+
+    // 获取订阅内容
+    const subscriptionsRepo = c.get('subscriptionsRepo');
+    if (!subscriptionsRepo) {
+      return c.text('Service unavailable', 503);
+    }
+
+    const result = await subscriptionsRepo.getById(validation.uuid);
+    if (!result.success || !result.data) {
+      return c.text('Subscription not found', 404);
+    }
+
+    // 记录访问日志
+    console.log(`Timed subscription accessed: ${validation.uuid} by user ${validation.userId}`);
+
+    // 返回订阅内容
+    const subscription = result.data;
+    return c.text(subscription.content || '', 200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+
+  } catch (error) {
+    console.error('Timed subscription access error:', error);
+    return c.text('Internal server error', 500);
+  }
+});
+
+// 时效性订阅链接验证函数 (需要在这里重新定义，因为无法从routes导入)
+const validateTimedSubscription = async (encoded: string, signature: string, secretKey: string) => {
+  try {
+    const payload = atob(encoded);
+    const [uuid, userId, expiry] = payload.split(':');
+
+    // 验证签名
+    const encoder = new TextEncoder();
+    const data = encoder.encode(payload + secretKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const expectedSig = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (signature !== expectedSig) return null;
+
+    // 验证时效性
+    if (Date.now() > parseInt(expiry)) return null;
+
+    return { uuid, userId, expiry: parseInt(expiry) };
+  } catch {
+    return null;
+  }
+};
+
 // 认证路由
 app.route('/auth', authRouter);
 

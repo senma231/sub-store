@@ -4,6 +4,49 @@ import { authMiddleware } from '../middleware/auth';
 import { SubscriptionsRepository } from '../database/subscriptions';
 import { parseSubscriptionContent } from '../utils/subscriptionParser';
 
+// 时效性订阅链接工具函数
+const generateTimedSubscriptionUrl = async (uuid: string, userId: string, secretKey: string) => {
+  const timestamp = Date.now();
+  const expiry = timestamp + (24 * 60 * 60 * 1000); // 24小时有效期
+
+  // 创建签名载荷
+  const payload = `${uuid}:${userId}:${expiry}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payload + secretKey);
+
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // 编码链接
+  const encoded = btoa(payload).replace(/[+/=]/g, '');
+
+  return `/s/${encoded}?sig=${signature}&t=${timestamp}`;
+};
+
+const validateTimedSubscription = async (encoded: string, signature: string, secretKey: string) => {
+  try {
+    const payload = atob(encoded);
+    const [uuid, userId, expiry] = payload.split(':');
+
+    // 验证签名
+    const encoder = new TextEncoder();
+    const data = encoder.encode(payload + secretKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const expectedSig = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (signature !== expectedSig) return null;
+
+    // 验证时效性
+    if (Date.now() > parseInt(expiry)) return null;
+
+    return { uuid, userId, expiry: parseInt(expiry) };
+  } catch {
+    return null;
+  }
+};
+
 export const subscriptionsRouter = new Hono<{ Bindings: Env }>();
 
 // 临时禁用认证中间件以解决登录问题
@@ -472,6 +515,54 @@ subscriptionsRouter.post('/parse', async (c) => {
       debug: {
         error: error instanceof Error ? error.stack : String(error)
       }
+    }, 500);
+  }
+});
+
+// 生成时效性订阅链接
+subscriptionsRouter.post('/:id/timed-link', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const subscriptionsRepo = c.get('subscriptionsRepo') as SubscriptionsRepository;
+
+    if (!subscriptionsRepo) {
+      return c.json({
+        success: false,
+        error: 'Service unavailable',
+        message: 'Subscriptions repository not available',
+      }, 503);
+    }
+
+    // 获取订阅信息
+    const result = await subscriptionsRepo.getById(id);
+    if (!result.success || !result.data) {
+      return c.json({
+        success: false,
+        error: 'Not Found',
+        message: 'Subscription not found',
+      }, 404);
+    }
+
+    // 生成时效性链接
+    const secretKey = c.env.ADMIN_TOKEN || 'default-secret-key';
+    const userId = 'user-' + Date.now(); // 临时用户ID，实际应该从认证中获取
+    const timedUrl = await generateTimedSubscriptionUrl(id, userId, secretKey);
+
+    return c.json({
+      success: true,
+      data: {
+        timedUrl,
+        expiresIn: '24 hours',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      },
+    });
+
+  } catch (error) {
+    console.error('Generate timed link error:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to generate timed link',
     }, 500);
   }
 });
