@@ -132,16 +132,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }}>
       {/* 侧边栏 */}
       <div style={{
-        width: isMobile ? (collapsed ? '0px' : '200px') : (collapsed ? '80px' : '200px'),
+        width: isMobile ? '200px' : (collapsed ? '80px' : '200px'),
         height: '100vh',
         background: token.colorBgContainer,
         borderRight: `1px solid ${token.colorBorder}`,
-        transition: 'width 0.3s ease',
+        transition: isMobile ? 'transform 0.3s ease' : 'width 0.3s ease',
         overflow: 'hidden',
         position: isMobile ? 'fixed' : 'relative',
-        zIndex: isMobile ? 1000 : 'auto',
+        zIndex: isMobile ? 1001 : 'auto',
         left: 0,
         top: 0,
+        flexShrink: 0,
+        transform: isMobile ? (collapsed ? 'translateX(-100%)' : 'translateX(0)') : 'none',
       }}>
         {/* Logo */}
         <div style={{
@@ -177,11 +179,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
+          inlineCollapsed={collapsed}
           items={menuItems}
           onClick={handleMenuClick}
-          style={{ 
+          style={{
             border: 'none',
             background: 'transparent',
+            width: '100%',
           }}
         />
       </div>
@@ -258,7 +262,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.45)',
-            zIndex: 999,
+            zIndex: 1000,
           }}
           onClick={() => setCollapsed(true)}
         />
