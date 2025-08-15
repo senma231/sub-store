@@ -225,7 +225,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Header>
 
         {/* 主要内容区域 */}
-        {children}
+        <Layout.Content style={{
+          margin: 0,
+          padding: 0,
+          minHeight: 'calc(100vh - 64px)', // 减去Header高度
+          background: token.colorBgLayout,
+        }}>
+          {children}
+        </Layout.Content>
       </Layout>
 
       {/* 移动端遮罩层 */}
