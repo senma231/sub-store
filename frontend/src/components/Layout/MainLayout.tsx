@@ -124,7 +124,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout>
       <Sider
         trigger={null}
         collapsible
@@ -141,7 +141,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           }),
         }}
         theme="light"
-        width={isMobile ? 200 : 200}
+        width={200}
       >
         {/* Logo */}
         <div style={{
@@ -189,7 +189,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <Layout style={{
         marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
         transition: 'margin-left 0.3s ease',
-        minHeight: '100vh',
       }}>
         {/* 顶部导航 */}
         <Header style={{
@@ -220,8 +219,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             >
               <Button type="text" style={{ height: 'auto', padding: '4px 8px' }}>
                 <Space>
-                  <Avatar 
-                    size="small" 
+                  <Avatar
+                    size="small"
                     icon={<UserOutlined />}
                     style={{ backgroundColor: token.colorPrimary }}
                   />
@@ -233,11 +232,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </Header>
 
         {/* 主要内容区域 */}
-        <Layout.Content style={{
-          background: token.colorBgLayout,
-          padding: '24px',
-          minHeight: 'calc(100vh - 64px)',
-        }}>
+        <Layout.Content>
           {children}
         </Layout.Content>
       </Layout>

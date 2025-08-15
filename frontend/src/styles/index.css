@@ -158,34 +158,14 @@ html, body {
   color: #e6edf3;
 }
 
-/* 布局修复 */
+/* 基础布局 */
 .ant-layout {
   min-height: 100vh;
 }
 
-/* 确保内容区域正确显示 */
 .ant-layout-content {
-  min-height: calc(100vh - 64px);
-}
-
-/* 移动端适配 */
-@media (max-width: 768px) {
-  .ant-layout-sider {
-    position: fixed !important;
-    height: 100vh !important;
-    z-index: 1000 !important;
-    left: 0 !important;
-    top: 0 !important;
-  }
-
-  .ant-layout-sider.ant-layout-sider-collapsed {
-    transform: translateX(-100%) !important;
-  }
-
-  .ant-layout-content {
-    margin-left: 0 !important;
-    padding: 16px !important;
-  }
+  padding: 24px;
+  background: #f0f2f5;
 }
 
 /* 响应式设计 */
