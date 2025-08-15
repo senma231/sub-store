@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Dropdown, Avatar, Space, Typography, theme } from 'antd';
+import { Menu, Button, Dropdown, Avatar, Space, Typography, theme } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -17,7 +17,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const { Header, Sider } = Layout;
+// 不再使用Ant Design的Layout组件
 const { Text } = Typography;
 
 interface MainLayoutProps {
