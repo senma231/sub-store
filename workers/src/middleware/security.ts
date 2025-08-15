@@ -116,8 +116,8 @@ export async function ddosProtectionMiddleware(c: Context<{ Bindings: Env }>, ne
     securityInfo.lastRequest = now;
     securityInfo.userAgents.add(userAgent);
 
-    // 8. DDoS检测
-    const maxRequestsPerMinute = 30; // 每分钟最多30个请求
+    // 8. DDoS检测 - 放宽限制以支持正常的前端应用
+    const maxRequestsPerMinute = 120; // 每分钟最多120个请求（从30提高到120）
     if (securityInfo.requestCount > maxRequestsPerMinute) {
       securityInfo.suspiciousCount++;
       console.log(`⚠️ [安全] 检测到高频请求: ${clientIP}, 请求数: ${securityInfo.requestCount}`);
@@ -129,19 +129,19 @@ export async function ddosProtectionMiddleware(c: Context<{ Bindings: Env }>, ne
       console.log(`⚠️ [安全] 检测到User-Agent频繁变化: ${clientIP}, 数量: ${securityInfo.userAgents.size}`);
     }
 
-    // 10. 检测请求间隔过短
+    // 10. 检测请求间隔过短 - 放宽限制
     const timeSinceLastRequest = now - securityInfo.lastRequest;
-    if (timeSinceLastRequest < 1000 && securityInfo.requestCount > 1) { // 1秒内重复请求
+    if (timeSinceLastRequest < 100 && securityInfo.requestCount > 5) { // 100ms内连续5个请求才算可疑
       securityInfo.suspiciousCount++;
       console.log(`⚠️ [安全] 检测到高频请求: ${clientIP}, 间隔: ${timeSinceLastRequest}ms`);
     }
 
-    // 11. 根据可疑度决定是否封禁
-    if (securityInfo.suspiciousCount > 5) {
-      // 临时封禁15分钟
-      securityInfo.blockedUntil = now + 15 * 60 * 1000;
+    // 11. 根据可疑度决定是否封禁 - 提高封禁阈值
+    if (securityInfo.suspiciousCount > 20) { // 从5提高到20
+      // 临时封禁5分钟（从15分钟减少到5分钟）
+      securityInfo.blockedUntil = now + 5 * 60 * 1000;
       console.log(`🚫 [安全] 临时封禁IP: ${clientIP}, 可疑度: ${securityInfo.suspiciousCount}`);
-      
+
       securityStore.set(clientIP, securityInfo);
       return c.text('Access temporarily blocked due to suspicious activity', 429);
     }
