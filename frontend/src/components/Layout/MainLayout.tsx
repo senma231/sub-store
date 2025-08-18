@@ -215,10 +215,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => {
-              console.log('汉堡菜单点击:', { isMobile, collapsed, newState: !collapsed });
-              setCollapsed(!collapsed);
-            }}
+            onClick={() => setCollapsed(!collapsed)}
             style={{
               fontSize: '16px',
               width: '64px',

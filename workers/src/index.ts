@@ -157,7 +157,7 @@ app.use('*', prettyJSON());
 // 基础安全防护（使用更合理的配置）
 app.use('*', ddosProtectionMiddleware);      // DDoS防护（已优化配置）
 
-// CORS 配置 - 只使用自定义域名
+// CORS 配置 - 只使用自定义域名，优化性能
 app.use('*', cors({
   origin: [
     'https://sub.senma.io',
@@ -170,6 +170,7 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: true,
+  maxAge: 86400, // 预检请求缓存24小时
 }));
 
 // 速率限制（暂时禁用以简化演示）

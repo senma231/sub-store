@@ -19,15 +19,10 @@ const api: AxiosInstance = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    console.log('🚀 [API请求] 发送请求:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
-      headers: config.headers,
-      data: config.data,
-      params: config.params
-    });
+    // 生产环境移除调试日志以提升性能
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 [API请求]:', config.method?.toUpperCase(), config.url);
+    }
 
     // 添加认证 token
     const token = localStorage.getItem('auth_token');
@@ -56,19 +51,17 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('✅ [API响应] 收到响应:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.config.url,
-      method: response.config.method?.toUpperCase(),
-      headers: response.headers,
-      data: response.data
-    });
+    // 生产环境移除调试日志以提升性能
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [API响应]:', response.status, response.config.url);
+    }
 
     // 检查业务状态码
     if (response.data && response.data.success === false) {
       const errorMessage = response.data.message || response.data.error || '请求失败';
-      console.error('❌ [API响应] 业务逻辑错误:', errorMessage);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [API响应] 业务逻辑错误:', errorMessage);
+      }
       message.error(errorMessage);
       return Promise.reject(new Error(errorMessage));
     }
