@@ -39,6 +39,16 @@ app.get('/health', (c) => {
   });
 });
 
+// 临时测试端点 - 验证部署版本
+app.get('/test-version', (c) => {
+  return c.json({
+    message: '认证中间件已完全移除',
+    version: '2d846483-9f56-453e-9ff6-aac5462ee291',
+    timestamp: new Date().toISOString(),
+    authMiddlewareRemoved: true
+  });
+});
+
 // API 路由
 app.route('/api/xui-panels', xuiPanels);
 
