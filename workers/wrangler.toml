@@ -7,7 +7,7 @@ node_compat = true
 [[d1_databases]]
 binding = "DB"
 database_name = "sub-store-db"
-database_id = "YOUR_REAL_DATABASE_ID_HERE"
+database_id = "860a7c44-0556-4c2f-a004-aa373740c18c"
 
 # 环境变量
 [vars]
