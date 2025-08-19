@@ -6,6 +6,7 @@ import {
   DashboardOutlined,
   NodeIndexOutlined,
   LinkOutlined,
+  CloudServerOutlined,
   BarChartOutlined,
   SettingOutlined,
   UserOutlined,
@@ -67,6 +68,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       key: '/subscriptions',
       icon: <LinkOutlined />,
       label: '订阅管理',
+    },
+    {
+      key: '/xui-panels',
+      icon: <CloudServerOutlined />,
+      label: 'X-UI面板',
     },
     {
       key: '/statistics',

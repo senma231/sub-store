@@ -25,6 +25,8 @@ import { publicSubscriptionsRouter } from './routes/publicSubscriptions';
 import { secureSubscriptionsRouter } from './routes/secureSubscriptions';
 import { migrationRouter } from './routes/migration';
 import { securityRouter } from './routes/security';
+import { securityConfigRouter } from './routes/securityConfig';
+import { xuiPanelsRouter } from './routes/xuiPanels';
 import { authMiddleware } from './middleware/auth';
 import { rateLimitMiddleware } from './middleware/rateLimit';
 import { errorHandler } from './middleware/errorHandler';
@@ -157,10 +159,13 @@ app.use('*', prettyJSON());
 // 基础安全防护（使用更合理的配置）
 app.use('*', ddosProtectionMiddleware);      // DDoS防护（已优化配置）
 
-// CORS 配置 - 只使用自定义域名，优化性能
+// CORS 配置 - 包含所有部署域名
 app.use('*', cors({
   origin: [
     'https://sub.senma.io',
+    'https://sub-store-frontend.pages.dev',
+    'https://01f0ad60.sub-store-frontend.pages.dev',
+    'https://9c68468d.sub-store-frontend.pages.dev',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://localhost:3000',
@@ -278,6 +283,8 @@ app.route('/api/subscriptions', customSubscriptionsRouter);
 app.route('/api/manage/subscriptions', subscriptionsRouter);
 app.route('/api/migration', migrationRouter);
 app.route('/api/security', securityRouter);
+app.route('/api/security', securityConfigRouter);
+app.route('/api/xui-panels', xuiPanelsRouter);
 
 // 根路径
 app.get('/', (c) => {

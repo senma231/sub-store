@@ -30,6 +30,12 @@ export async function initializeDatabase(db: Database): Promise<void> {
     await subscriptionsRepo.createTable();
     await subscriptionsRepo.createIndexes();
 
+    // 初始化安全相关数据库表
+    await Database.initSecurityTables(db);
+
+    // 初始化X-UI相关数据库表
+    await Database.initXUITables(db);
+
     console.log('Database initialization completed successfully');
 
   } catch (error) {

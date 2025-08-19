@@ -9,6 +9,7 @@ const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 const NodesPage = React.lazy(() => import('./pages/NodesPage'));
 const SubscriptionsPage = React.lazy(() => import('./pages/SubscriptionsPage'));
+const XUIPanelsPage = React.lazy(() => import('./pages/XUIPanelsPage'));
 const StatisticsPage = React.lazy(() => import('./pages/StatisticsPage'));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
@@ -90,6 +91,7 @@ const App: React.FC = () => {
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/nodes" element={<NodesPage />} />
                         <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                        <Route path="/xui-panels" element={<XUIPanelsPage />} />
                         <Route path="/statistics" element={<StatisticsPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="*" element={<NotFoundPage />} />

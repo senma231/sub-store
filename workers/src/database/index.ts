@@ -445,4 +445,113 @@ export class Database {
 
     return dbNode;
   }
+
+  // 初始化安全相关数据库表
+  static async initSecurityTables(db: D1Database): Promise<void> {
+    try {
+      // 安全配置表
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS security_config (
+          config_key TEXT PRIMARY KEY,
+          config_value TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `).run();
+
+      // 访问日志表
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS access_logs (
+          id TEXT PRIMARY KEY,
+          ip TEXT NOT NULL,
+          user_agent TEXT,
+          country TEXT,
+          timestamp TEXT NOT NULL,
+          status TEXT NOT NULL,
+          reason TEXT,
+          subscription_id TEXT,
+          path TEXT
+        )
+      `).run();
+
+      // 创建索引
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_access_logs_timestamp ON access_logs(timestamp)
+      `).run();
+
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_access_logs_ip ON access_logs(ip)
+      `).run();
+
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_access_logs_status ON access_logs(status)
+      `).run();
+
+      console.log('✅ 安全相关数据库表初始化完成');
+
+    } catch (error) {
+      console.error('❌ 初始化安全数据库表失败:', error);
+      throw error;
+    }
+  }
+
+  // 初始化X-UI相关数据库表
+  static async initXUITables(db: D1Database): Promise<void> {
+    try {
+      // X-UI面板配置表
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS xui_panels (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          host TEXT NOT NULL,
+          port INTEGER NOT NULL,
+          base_path TEXT,
+          username TEXT NOT NULL,
+          password TEXT NOT NULL,
+          protocol TEXT DEFAULT 'https',
+          enabled BOOLEAN DEFAULT true,
+          last_sync_at TEXT,
+          sync_status TEXT DEFAULT 'pending',
+          sync_error TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      `).run();
+
+      // X-UI同步日志表
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS xui_sync_logs (
+          id TEXT PRIMARY KEY,
+          panel_id TEXT NOT NULL,
+          sync_type TEXT NOT NULL,
+          nodes_found INTEGER DEFAULT 0,
+          nodes_imported INTEGER DEFAULT 0,
+          nodes_updated INTEGER DEFAULT 0,
+          status TEXT NOT NULL,
+          error_message TEXT,
+          sync_duration INTEGER,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (panel_id) REFERENCES xui_panels(id)
+        )
+      `).run();
+
+      // 创建索引
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_xui_panels_enabled ON xui_panels(enabled)
+      `).run();
+
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_xui_sync_logs_panel_id ON xui_sync_logs(panel_id)
+      `).run();
+
+      await db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_xui_sync_logs_created_at ON xui_sync_logs(created_at)
+      `).run();
+
+      console.log('✅ X-UI相关数据库表初始化完成');
+
+    } catch (error) {
+      console.error('❌ 初始化X-UI数据库表失败:', error);
+      throw error;
+    }
+  }
 }
