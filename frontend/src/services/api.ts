@@ -2,10 +2,10 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 
 import { message } from 'antd';
 import type { ApiResponse } from '@/types';
 
-// API 基础配置 - 使用正确的后端地址
+// API 基础配置 - 使用您的自定义API域名
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8787'  // 本地开发环境
-  : 'https://substore-api.senmago231.workers.dev';  // 使用实际的Workers API地址
+  : 'https://sub-api.senma.io';  // 使用您的自定义API域名
 
 // 创建 axios 实例
 const api: AxiosInstance = axios.create({
