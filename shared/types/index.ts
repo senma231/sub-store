@@ -381,6 +381,77 @@ export interface DbSession {
   created_at: string;
 }
 
+// X-UI 面板配置
+export interface XUIPanel {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  password: string;
+  enabled: boolean;
+  remark?: string;
+  tags?: string[];
+
+  // 连接配置
+  timeout?: number;
+  retryCount?: number;
+
+  // 统计信息
+  totalNodes?: number;
+  lastSync?: string;
+  status?: 'online' | 'offline' | 'error';
+
+  // 时间戳
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 数据库X-UI面板表
+export interface DbXUIPanel {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  password: string;
+  enabled: boolean;
+  remark?: string;
+  tags?: string; // JSON 字符串
+
+  // 连接配置
+  timeout: number;
+  retry_count: number;
+
+  // 统计信息
+  total_nodes: number;
+  last_sync?: string;
+  status: string;
+
+  // 时间戳
+  created_at: string;
+  updated_at: string;
+}
+
+// X-UI 面板节点信息
+export interface XUIPanelNode {
+  id: string;
+  panelId: string;
+  name: string;
+  type: ProxyType;
+  server: string;
+  port: number;
+  config: any; // 节点配置
+  enabled: boolean;
+  remark?: string;
+
+  // 统计信息
+  totalRequests: number;
+  lastUsed?: string;
+
+  // 时间戳
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 数据库操作结果
 export interface DbResult<T = any> {
   success: boolean;

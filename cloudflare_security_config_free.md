@@ -160,7 +160,7 @@ URL: sub-api.senma.io/s/*
 设置:
 - Cache Level: Bypass
 - Browser Integrity Check: On
-![1755500850270](image/cloudflare_security_config_free/1755500850270.png)![1755500860769](image/cloudflare_security_config_free/1755500860769.png)```
+![1755500850270](image/cloudflare_security_config_free/1755500850270.png)![1755500860769](image/cloudflare_security_config_free/1755500860769.png)![1755511975057](image/cloudflare_security_config_free/1755511975057.png)![1755512019935](image/cloudflare_security_config_free/1755512019935.png)![1755562332600](image/cloudflare_security_config_free/1755562332600.png)![1755566776195](image/cloudflare_security_config_free/1755566776195.png)```
 
 ---
 

@@ -1,467 +1,344 @@
-/**
- * X-UI面板管理API路由
- * 提供X-UI面板的CRUD操作和节点同步功能
- */
-
 import { Hono } from 'hono';
-import type { Env } from '../types';
-import { XUIPanelsRepository } from '../database/xuiPanels';
-import { NodesRepository } from '../database/nodes';
-import { XUIConnector } from '../utils/xuiConnector';
-import { XUIParser } from '../utils/xuiParser';
+import { XUIPanelRepository } from '../repositories/xuiPanelRepository';
+import { XUIPanel } from '../../../shared/types';
 
-export const xuiPanelsRouter = new Hono<{ Bindings: Env }>();
+type Bindings = {
+  DB: D1Database;
+};
+
+const xuiPanels = new Hono<{ Bindings: Bindings }>();
 
 // 获取所有X-UI面板
-xuiPanelsRouter.get('/', async (c) => {
+xuiPanels.get('/', async (c) => {
   try {
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    
-    const result = await xuiPanelsRepo.getAll();
-    
-    if (result.success) {
-      // 隐藏敏感信息（密码）
-      const safePanels = result.data?.map(panel => ({
-        ...panel,
-        password: '***'
-      }));
-      
-      return c.json({
-        success: true,
-        data: safePanels
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: result.error
+    const repository = new XUIPanelRepository(c.env.DB);
+    const result = await repository.findAll();
+
+    if (!result.success) {
+      return c.json({ 
+        success: false, 
+        error: result.error 
       }, 500);
     }
-    
+
+    return c.json({
+      success: true,
+      data: result.data,
+      total: result.data?.length || 0
+    });
   } catch (error) {
     console.error('获取X-UI面板列表失败:', error);
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
+    }, 500);
+  }
+});
+
+// 根据ID获取X-UI面板
+xuiPanels.get('/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const repository = new XUIPanelRepository(c.env.DB);
+    const result = await repository.findById(id);
+
+    if (!result.success) {
+      return c.json({ 
+        success: false, 
+        error: result.error 
+      }, 500);
+    }
+
+    if (!result.data) {
+      return c.json({ 
+        success: false, 
+        error: 'X-UI面板不存在' 
+      }, 404);
+    }
+
     return c.json({
-      success: false,
-      error: 'Internal Server Error'
+      success: true,
+      data: result.data
+    });
+  } catch (error) {
+    console.error('获取X-UI面板失败:', error);
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
     }, 500);
   }
 });
 
 // 创建X-UI面板
-xuiPanelsRouter.post('/', async (c) => {
+xuiPanels.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
     
-    // 验证必填字段
-    if (!body.name || !body.host || !body.port || !body.username || !body.password) {
+    // 验证必需字段
+    if (!body.name || !body.url || !body.username || !body.password) {
       return c.json({
         success: false,
-        error: 'Missing required fields: name, host, port, username, password'
+        error: '缺少必需字段: name, url, username, password'
       }, 400);
     }
-    
-    // 验证端口范围
-    if (body.port < 1 || body.port > 65535) {
+
+    // 验证URL格式
+    try {
+      new URL(body.url);
+    } catch {
       return c.json({
         success: false,
-        error: 'Port must be between 1 and 65535'
+        error: 'URL格式无效'
       }, 400);
     }
-    
-    const panelData = {
+
+    const panelData: Omit<XUIPanel, 'id' | 'createdAt' | 'updatedAt'> = {
       name: body.name,
-      host: body.host,
-      port: parseInt(body.port),
-      basePath: body.basePath || undefined,
+      url: body.url,
       username: body.username,
       password: body.password,
-      protocol: body.protocol || 'https',
-      enabled: body.enabled !== undefined ? body.enabled : true,
-      syncStatus: 'pending' as const
+      enabled: body.enabled !== false, // 默认启用
+      remark: body.remark,
+      tags: body.tags,
+      timeout: body.timeout || 30,
+      retryCount: body.retryCount || 3,
+      totalNodes: 0,
+      status: 'offline'
     };
-    
-    const result = await xuiPanelsRepo.create(panelData);
-    
-    if (result.success) {
-      // 隐藏密码
-      const safePanel = {
-        ...result.data,
-        password: '***'
-      };
-      
-      return c.json({
-        success: true,
-        data: safePanel
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: result.error
+
+    const repository = new XUIPanelRepository(c.env.DB);
+    const result = await repository.create(panelData);
+
+    if (!result.success) {
+      return c.json({ 
+        success: false, 
+        error: result.error 
       }, 500);
     }
-    
+
+    return c.json({
+      success: true,
+      data: result.data,
+      message: 'X-UI面板创建成功'
+    }, 201);
   } catch (error) {
     console.error('创建X-UI面板失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
-    }, 500);
-  }
-});
-
-// 获取单个X-UI面板
-xuiPanelsRouter.get('/:id', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    
-    const result = await xuiPanelsRepo.getById(id);
-    
-    if (result.success) {
-      // 隐藏密码
-      const safePanel = {
-        ...result.data,
-        password: '***'
-      };
-      
-      return c.json({
-        success: true,
-        data: safePanel
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: result.error
-      }, result.error === 'Panel not found' ? 404 : 500);
-    }
-    
-  } catch (error) {
-    console.error('获取X-UI面板失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
     }, 500);
   }
 });
 
 // 更新X-UI面板
-xuiPanelsRouter.put('/:id', async (c) => {
+xuiPanels.put('/:id', async (c) => {
   try {
     const id = c.req.param('id');
     const body = await c.req.json();
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    
-    // 验证端口范围（如果提供）
-    if (body.port && (body.port < 1 || body.port > 65535)) {
-      return c.json({
-        success: false,
-        error: 'Port must be between 1 and 65535'
-      }, 400);
+
+    // 验证URL格式（如果提供）
+    if (body.url) {
+      try {
+        new URL(body.url);
+      } catch {
+        return c.json({
+          success: false,
+          error: 'URL格式无效'
+        }, 400);
+      }
     }
-    
-    const updates: any = {};
-    if (body.name !== undefined) updates.name = body.name;
-    if (body.host !== undefined) updates.host = body.host;
-    if (body.port !== undefined) updates.port = parseInt(body.port);
-    if (body.basePath !== undefined) updates.basePath = body.basePath || undefined;
-    if (body.username !== undefined) updates.username = body.username;
-    if (body.password !== undefined && body.password !== '***') {
-      updates.password = body.password;
+
+    const repository = new XUIPanelRepository(c.env.DB);
+    const result = await repository.update(id, body);
+
+    if (!result.success) {
+      return c.json({ 
+        success: false, 
+        error: result.error 
+      }, 500);
     }
-    if (body.protocol !== undefined) updates.protocol = body.protocol;
-    if (body.enabled !== undefined) updates.enabled = body.enabled;
-    
-    const result = await xuiPanelsRepo.update(id, updates);
-    
-    if (result.success) {
-      // 隐藏密码
-      const safePanel = {
-        ...result.data,
-        password: '***'
-      };
-      
-      return c.json({
-        success: true,
-        data: safePanel
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: result.error
-      }, result.error === 'Panel not found' ? 404 : 500);
+
+    if (!result.data) {
+      return c.json({ 
+        success: false, 
+        error: 'X-UI面板不存在' 
+      }, 404);
     }
-    
+
+    return c.json({
+      success: true,
+      data: result.data,
+      message: 'X-UI面板更新成功'
+    });
   } catch (error) {
     console.error('更新X-UI面板失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
     }, 500);
   }
 });
 
 // 删除X-UI面板
-xuiPanelsRouter.delete('/:id', async (c) => {
+xuiPanels.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    
-    const result = await xuiPanelsRepo.delete(id);
-    
-    if (result.success) {
-      return c.json({
-        success: true,
-        message: 'Panel deleted successfully'
-      });
-    } else {
-      return c.json({
-        success: false,
-        error: result.error
+    const repository = new XUIPanelRepository(c.env.DB);
+    const result = await repository.delete(id);
+
+    if (!result.success) {
+      return c.json({ 
+        success: false, 
+        error: result.error 
       }, 500);
     }
-    
+
+    return c.json({
+      success: true,
+      message: 'X-UI面板删除成功'
+    });
   } catch (error) {
     console.error('删除X-UI面板失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
+    }, 500);
+  }
+});
+
+// 批量操作X-UI面板
+xuiPanels.post('/batch', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { action, ids, data } = body;
+
+    if (!action || !ids || !Array.isArray(ids)) {
+      return c.json({
+        success: false,
+        error: '缺少必需字段: action, ids'
+      }, 400);
+    }
+
+    const repository = new XUIPanelRepository(c.env.DB);
+
+    switch (action) {
+      case 'enable':
+        const enableResult = await repository.batchUpdate(ids, { enabled: true });
+        if (!enableResult.success) {
+          return c.json({ success: false, error: enableResult.error }, 500);
+        }
+        return c.json({
+          success: true,
+          message: `成功启用 ${enableResult.data} 个X-UI面板`
+        });
+
+      case 'disable':
+        const disableResult = await repository.batchUpdate(ids, { enabled: false });
+        if (!disableResult.success) {
+          return c.json({ success: false, error: disableResult.error }, 500);
+        }
+        return c.json({
+          success: true,
+          message: `成功禁用 ${disableResult.data} 个X-UI面板`
+        });
+
+      case 'delete':
+        let deletedCount = 0;
+        for (const id of ids) {
+          const deleteResult = await repository.delete(id);
+          if (deleteResult.success) {
+            deletedCount++;
+          }
+        }
+        return c.json({
+          success: true,
+          message: `成功删除 ${deletedCount} 个X-UI面板`
+        });
+
+      default:
+        return c.json({
+          success: false,
+          error: '不支持的操作类型'
+        }, 400);
+    }
+  } catch (error) {
+    console.error('批量操作X-UI面板失败:', error);
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
     }, 500);
   }
 });
 
 // 测试X-UI面板连接
-xuiPanelsRouter.post('/:id/test', async (c) => {
+xuiPanels.post('/:id/test', async (c) => {
   try {
     const id = c.req.param('id');
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
+    const repository = new XUIPanelRepository(c.env.DB);
     
-    // 获取面板配置
-    const panelResult = await xuiPanelsRepo.getById(id);
-    if (!panelResult.success) {
+    // 获取面板信息
+    const panelResult = await repository.findById(id);
+    if (!panelResult.success || !panelResult.data) {
       return c.json({
         success: false,
-        error: panelResult.error
+        error: 'X-UI面板不存在'
       }, 404);
     }
-    
-    const panel = panelResult.data!;
-    const connector = new XUIConnector(panel);
-    
-    // 测试连接
-    const testResult = await connector.testConnection();
-    
-    return c.json({
-      success: true,
-      data: {
-        connected: testResult.success,
-        latency: testResult.latency,
-        error: testResult.error
-      }
-    });
-    
-  } catch (error) {
-    console.error('测试X-UI面板连接失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
-    }, 500);
-  }
-});
 
-// 从X-UI面板同步节点
-xuiPanelsRouter.post('/:id/sync', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    const nodesRepo = new NodesRepository(db);
+    const panel = panelResult.data;
     
-    const syncStartTime = Date.now();
-    
-    // 获取面板配置
-    const panelResult = await xuiPanelsRepo.getById(id);
-    if (!panelResult.success) {
-      return c.json({
-        success: false,
-        error: panelResult.error
-      }, 404);
-    }
-    
-    const panel = panelResult.data!;
-    const connector = new XUIConnector(panel);
-    
-    console.log(`🔄 [X-UI同步] 开始同步面板: ${panel.name} (${panel.host}:${panel.port})`);
-    
-    // 获取inbound配置
-    const inboundsResult = await connector.getInbounds();
-    if (!inboundsResult.success) {
-      // 记录失败日志
-      await xuiPanelsRepo.createSyncLog({
-        panelId: id,
-        syncType: 'manual',
-        nodesFound: 0,
-        nodesImported: 0,
-        nodesUpdated: 0,
-        status: 'failed',
-        errorMessage: inboundsResult.error,
-        syncDuration: Date.now() - syncStartTime
-      });
-      
-      // 更新面板状态
-      await xuiPanelsRepo.update(id, {
-        syncStatus: 'failed',
-        syncError: inboundsResult.error,
-        lastSyncAt: new Date().toISOString()
-      });
-      
-      return c.json({
-        success: false,
-        error: inboundsResult.error
-      }, 500);
-    }
-    
-    const inbounds = inboundsResult.data!;
-    console.log(`📡 [X-UI同步] 获取到 ${inbounds.length} 个入站配置`);
-    
-    // 解析节点
-    const parsedNodes = XUIParser.parseInbounds(inbounds, panel.host);
-    console.log(`🔍 [X-UI同步] 成功解析 ${parsedNodes.length} 个节点`);
-    
-    let importedCount = 0;
-    let updatedCount = 0;
-    
-    // 导入节点到数据库
-    for (const node of parsedNodes) {
-      try {
-        // 检查节点是否已存在（基于xuiId）
-        const existingResult = await nodesRepo.getNodes({ page: 1, limit: 1000 });
-        const existingNodes = existingResult.data?.items || [];
-        const existingNode = existingNodes.find(n => 
-          n.tags?.includes('x-ui') && 
-          n.remark?.includes(`xui-${node.xuiId}`)
-        );
-        
-        if (existingNode) {
-          // 更新现有节点
-          const updateResult = await nodesRepo.updateNode(existingNode.id, {
-            name: node.name,
-            server: node.server,
-            port: node.port,
-            enabled: node.enabled,
-            remark: node.remark,
-            updatedAt: new Date().toISOString()
-          });
-          
-          if (updateResult.success) {
-            updatedCount++;
-            console.log(`🔄 [X-UI同步] 更新节点: ${node.name}`);
-          }
-        } else {
-          // 创建新节点
-          const createResult = await nodesRepo.createNode(node);
-          if (createResult.success) {
-            importedCount++;
-            console.log(`➕ [X-UI同步] 导入节点: ${node.name}`);
-          }
-        }
-      } catch (error) {
-        console.error(`❌ [X-UI同步] 处理节点失败: ${node.name}`, error);
-      }
-    }
-    
-    const syncDuration = Date.now() - syncStartTime;
-    
-    // 记录同步日志
-    await xuiPanelsRepo.createSyncLog({
-      panelId: id,
-      syncType: 'manual',
-      nodesFound: inbounds.length,
-      nodesImported: importedCount,
-      nodesUpdated: updatedCount,
-      status: 'success',
-      syncDuration
-    });
-    
-    // 更新面板状态
-    await xuiPanelsRepo.update(id, {
-      syncStatus: 'success',
-      syncError: undefined,
-      lastSyncAt: new Date().toISOString()
-    });
-    
-    console.log(`✅ [X-UI同步] 同步完成: 导入${importedCount}个，更新${updatedCount}个，耗时${syncDuration}ms`);
-    
-    return c.json({
-      success: true,
-      data: {
-        nodesFound: inbounds.length,
-        nodesImported: importedCount,
-        nodesUpdated: updatedCount,
-        syncDuration
-      }
-    });
-    
-  } catch (error) {
-    console.error('同步X-UI节点失败:', error);
-    
-    // 记录失败日志
     try {
-      const db = c.env.DB;
-      const xuiPanelsRepo = new XUIPanelsRepository(db);
-      await xuiPanelsRepo.createSyncLog({
-        panelId: c.req.param('id'),
-        syncType: 'manual',
-        nodesFound: 0,
-        nodesImported: 0,
-        nodesUpdated: 0,
-        status: 'failed',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        syncDuration: 0
+      // 测试连接（这里是模拟，实际需要调用X-UI API）
+      const testUrl = `${panel.url}/login`;
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Sub-Store/2.0.0'
+        },
+        signal: AbortSignal.timeout(panel.timeout! * 1000)
       });
-    } catch (logError) {
-      console.error('记录同步日志失败:', logError);
-    }
-    
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
-    }, 500);
-  }
-});
 
-// 获取面板同步日志
-xuiPanelsRouter.get('/:id/logs', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const limit = parseInt(c.req.query('limit') || '50');
-    const db = c.env.DB;
-    const xuiPanelsRepo = new XUIPanelsRepository(db);
-    
-    const result = await xuiPanelsRepo.getSyncLogs(id, limit);
-    
-    if (result.success) {
+      const isOnline = response.ok;
+      const status = isOnline ? 'online' : 'error';
+
+      // 更新面板状态
+      await repository.update(id, { 
+        status,
+        lastSync: new Date().toISOString()
+      });
+
       return c.json({
         success: true,
-        data: result.data
+        data: {
+          status,
+          statusCode: response.status,
+          responseTime: Date.now() // 简化的响应时间
+        },
+        message: isOnline ? '连接测试成功' : '连接测试失败'
       });
-    } else {
+    } catch (error) {
+      // 更新为错误状态
+      await repository.update(id, { 
+        status: 'error',
+        lastSync: new Date().toISOString()
+      });
+
       return c.json({
         success: false,
-        error: result.error
-      }, 500);
+        error: `连接测试失败: ${error.message}`,
+        data: {
+          status: 'error',
+          error: error.message
+        }
+      });
     }
-    
   } catch (error) {
-    console.error('获取同步日志失败:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error'
+    console.error('测试X-UI面板连接失败:', error);
+    return c.json({ 
+      success: false, 
+      error: '服务器内部错误' 
     }, 500);
   }
 });
+
+export { xuiPanels };

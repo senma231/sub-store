@@ -1,32 +1,28 @@
-name = "substore-api"
+name = "sub-store-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-15"
-compatibility_flags = ["nodejs_compat"]
-
-# Account ID 需要明确指定以避免认证问题
-# 你需要从 Cloudflare Dashboard 获取你的 Account ID
-# 访问：https://dash.cloudflare.com/ 右侧边栏可以看到 Account ID
-# account_id = "YOUR_ACCOUNT_ID_HERE"
-
-# Workers 路由配置
-# 实际部署地址：https://substore-api.senmago231.workers.dev
+node_compat = true
 
 # D1 数据库配置
 [[d1_databases]]
 binding = "DB"
 database_name = "sub-store-db"
-database_id = "860a7c44-0556-4c2f-a004-aa373740c18c"
+database_id = "YOUR_REAL_DATABASE_ID_HERE"
 
+# 环境变量
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
-CORS_ORIGINS = "https://sub-store-frontend.pages.dev,https://senma231.github.io,https://sub.senma.io"
+APP_VERSION = "2.0.0"
 
-# 在生产环境中，这些应该通过 Cloudflare Dashboard 或 wrangler secret 命令设置
-# 方法1: Cloudflare Dashboard -> Workers & Pages -> substore-api -> Settings -> Variables
-# 方法2: wrangler secret put ADMIN_TOKEN
-# 方法3: wrangler secret put JWT_SECRET
+# 开发环境配置
+[env.development]
+name = "sub-store-api-dev"
 
-# 管理员认证配置说明：
-# ADMIN_TOKEN: 管理员登录密码，用户名固定为 "admin"
-# JWT_SECRET: JWT 令牌签名密钥，用于会话管理（可选，系统会自动生成）
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "sub-store-db-dev"
+database_id = "YOUR_DEV_DATABASE_ID_HERE"
+
+[env.development.vars]
+ENVIRONMENT = "development"
