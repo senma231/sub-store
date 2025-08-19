@@ -26,36 +26,24 @@ const authMiddleware = async (c: any, next: any) => {
 
     // 调试日志
     console.log('认证中间件 - 收到token:', token.substring(0, 20) + '...');
-    console.log('认证中间件 - ADMIN_TOKEN存在:', !!c.env.ADMIN_TOKEN);
-    console.log('认证中间件 - ADMIN_TOKEN值:', c.env.ADMIN_TOKEN ? c.env.ADMIN_TOKEN.substring(0, 10) + '...' : 'undefined');
+    console.log('认证中间件 - ADMIN_TOKEN:', c.env.ADMIN_TOKEN ? 'exists' : 'missing');
 
-    // 方法1: 检查ADMIN_TOKEN
-    if (c.env.ADMIN_TOKEN && token === c.env.ADMIN_TOKEN) {
+    // 简单验证：如果token等于ADMIN_TOKEN，则认为是有效的
+    if (token === c.env.ADMIN_TOKEN) {
       console.log('认证中间件 - ADMIN_TOKEN验证通过');
       await next();
       return;
     }
 
-    // 方法2: 检查是否是预设的管理员token
-    if (token === 'Sz@2400104') {
-      console.log('认证中间件 - 预设管理员token验证通过');
-      await next();
-      return;
-    }
-
-    // 方法3: 简单的JWT格式检查（包含两个点）
-    const tokenParts = token.split('.');
-    if (tokenParts.length === 3) {
-      console.log('认证中间件 - JWT格式验证通过');
-      // 暂时允许所有JWT格式的token通过
+    // 尝试验证JWT token（简化版本）
+    if (token.includes('.')) {
+      console.log('认证中间件 - JWT token格式检测通过');
+      // 看起来像JWT token，暂时允许通过
       await next();
       return;
     }
 
     console.log('认证中间件 - 所有验证都失败');
-    console.log('认证中间件 - token长度:', token.length);
-    console.log('认证中间件 - token格式:', token.includes('.') ? 'contains dots' : 'no dots');
-
     return c.json({
       success: false,
       error: 'Unauthorized',
