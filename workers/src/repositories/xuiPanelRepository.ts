@@ -13,8 +13,8 @@ export class XUIPanelRepository {
         ORDER BY created_at DESC
       `).all();
 
-      const panels = results.map(this.mapDbToXUIPanel);
-      
+      const panels = results.map((result) => this.mapDbToXUIPanel(result as unknown as DbXUIPanel));
+
       return {
         success: true,
         data: panels
@@ -22,7 +22,7 @@ export class XUIPanelRepository {
     } catch (error) {
       return {
         success: false,
-        error: `获取X-UI面板列表失败: ${error.message}`
+        error: `获取X-UI面板列表失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -45,12 +45,12 @@ export class XUIPanelRepository {
 
       return {
         success: true,
-        data: this.mapDbToXUIPanel(result as DbXUIPanel)
+        data: this.mapDbToXUIPanel(result as unknown as DbXUIPanel)
       };
     } catch (error) {
       return {
         success: false,
-        error: `获取X-UI面板失败: ${error.message}`
+        error: `获取X-UI面板失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -116,7 +116,7 @@ export class XUIPanelRepository {
     } catch (error) {
       return {
         success: false,
-        error: `创建X-UI面板失败: ${error.message}`
+        error: `创建X-UI面板失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -198,11 +198,20 @@ export class XUIPanelRepository {
 
       // 获取更新后的数据
       const result = await this.findById(id);
-      return result;
+      if (!result.success || !result.data) {
+        return {
+          success: false,
+          error: '更新后获取X-UI面板数据失败'
+        };
+      }
+      return {
+        success: true,
+        data: result.data
+      };
     } catch (error) {
       return {
         success: false,
-        error: `更新X-UI面板失败: ${error.message}`
+        error: `更新X-UI面板失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -223,7 +232,7 @@ export class XUIPanelRepository {
     } catch (error) {
       return {
         success: false,
-        error: `删除X-UI面板失败: ${error.message}`
+        error: `删除X-UI面板失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
@@ -269,7 +278,7 @@ export class XUIPanelRepository {
     } catch (error) {
       return {
         success: false,
-        error: `批量更新X-UI面板失败: ${error.message}`
+        error: `批量更新X-UI面板失败: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

@@ -325,10 +325,10 @@ xuiPanels.post('/:id/test', async (c) => {
 
       return c.json({
         success: false,
-        error: `连接测试失败: ${error.message}`,
+        error: `连接测试失败: ${error instanceof Error ? error.message : String(error)}`,
         data: {
           status: 'error',
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         }
       });
     }
