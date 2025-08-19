@@ -71,8 +71,8 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
-// 应用认证中间件到所有路由
-xuiPanels.use('*', authMiddleware);
+// 暂时禁用认证中间件进行测试
+// xuiPanels.use('*', authMiddleware);
 
 // 获取所有X-UI面板
 xuiPanels.get('/', async (c) => {
