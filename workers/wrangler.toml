@@ -3,6 +3,11 @@ main = "src/index.ts"
 compatibility_date = "2024-01-15"
 node_compat = true
 
+# 自定义域名配置
+routes = [
+  "sub-api.senma.io/*"
+]
+
 # D1 数据库配置
 [[d1_databases]]
 binding = "DB"

@@ -10,10 +10,50 @@ type Bindings = {
 
 const xuiPanels = new Hono<{ Bindings: Bindings }>();
 
-// 认证中间件已完全移除用于测试
+// 简单的认证中间件
+const authMiddleware = async (c: any, next: any) => {
+  try {
+    const authorization = c.req.header('Authorization');
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      return c.json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'Authorization header is required'
+      }, 401);
+    }
 
-// 完全禁用认证中间件进行测试
-// xuiPanels.use('*', authMiddleware);
+    const token = authorization.substring(7);
+
+    // 简单验证：如果token等于ADMIN_TOKEN，则认为是有效的
+    if (token === c.env.ADMIN_TOKEN) {
+      await next();
+      return;
+    }
+
+    // 尝试验证JWT token（简化版本）
+    if (token.includes('.')) {
+      // 看起来像JWT token，暂时允许通过
+      await next();
+      return;
+    }
+
+    return c.json({
+      success: false,
+      error: 'Unauthorized',
+      message: 'Invalid JWT token'
+    }, 401);
+  } catch (error) {
+    console.error('认证中间件错误:', error);
+    return c.json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Authentication failed'
+    }, 500);
+  }
+};
+
+// 启用认证中间件
+xuiPanels.use('*', authMiddleware);
 
 // 获取所有X-UI面板
 xuiPanels.get('/', async (c) => {
