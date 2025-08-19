@@ -24,24 +24,26 @@ const authMiddleware = async (c: any, next: any) => {
 
     const token = authorization.substring(7);
 
+    // 调试日志
+    console.log('认证中间件 - 收到token:', token.substring(0, 20) + '...');
+    console.log('认证中间件 - ADMIN_TOKEN:', c.env.ADMIN_TOKEN ? 'exists' : 'missing');
+
     // 简单验证：如果token等于ADMIN_TOKEN，则认为是有效的
     if (token === c.env.ADMIN_TOKEN) {
+      console.log('认证中间件 - ADMIN_TOKEN验证通过');
       await next();
       return;
     }
 
     // 尝试验证JWT token（简化版本）
-    try {
-      // 这里应该使用真正的JWT验证，但为了简化，我们先检查token格式
-      if (token.includes('.')) {
-        // 看起来像JWT token，暂时允许通过
-        await next();
-        return;
-      }
-    } catch (error) {
-      console.error('JWT验证失败:', error);
+    if (token.includes('.')) {
+      console.log('认证中间件 - JWT token格式检测通过');
+      // 看起来像JWT token，暂时允许通过
+      await next();
+      return;
     }
 
+    console.log('认证中间件 - 所有验证都失败');
     return c.json({
       success: false,
       error: 'Unauthorized',
