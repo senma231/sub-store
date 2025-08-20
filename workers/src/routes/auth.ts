@@ -70,11 +70,6 @@ auth.post('/login', async (c) => {
       },
       message: '登录成功'
     });
-
-    return c.json({
-      success: false,
-      error: '用户名或密码错误'
-    }, 401);
   } catch (error) {
     console.error('登录失败:', error);
     return c.json({

@@ -6,9 +6,23 @@ import type {
 } from '@/types';
 
 export const authService = {
-  // 登录
+  // 登录 - 直接使用axios而不是apiClient，因为登录响应格式特殊
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    return apiClient.post('/auth/login', { username, password });
+    const response = await fetch('https://sub-api.senma.io/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || '登录失败');
+    }
+
+    const result = await response.json();
+    return result.data; // 返回 { token, user }
   },
 
   // 验证 token
