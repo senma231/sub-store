@@ -17,16 +17,25 @@ nodes.use('*', authMiddleware);
 // 获取所有节点
 nodes.get('/', async (c) => {
   try {
+    console.log('开始获取节点列表...');
     const repository = new NodeRepository(c.env.DB);
     const result = await repository.findAll();
 
+    console.log('Repository结果:', {
+      success: result.success,
+      dataLength: result.data?.length,
+      error: result.error
+    });
+
     if (!result.success) {
+      console.error('Repository返回错误:', result.error);
       return c.json({
         success: false,
         error: result.error
       }, 500);
     }
 
+    console.log('返回节点数据，数量:', result.data?.length);
     return c.json({
       success: true,
       data: result.data,

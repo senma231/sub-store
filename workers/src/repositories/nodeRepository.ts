@@ -8,18 +8,26 @@ export class NodeRepository {
    */
   async findAll(): Promise<DbResult<Node[]>> {
     try {
+      console.log('NodeRepository: 开始查询数据库...');
       const { results } = await this.db.prepare(`
-        SELECT * FROM nodes 
+        SELECT * FROM nodes
         ORDER BY created_at DESC
       `).all();
 
+      console.log('NodeRepository: 数据库查询结果数量:', results.length);
+      console.log('NodeRepository: 第一条数据示例:', results[0]);
+
       const nodes = results.map((result) => this.mapDbToNode(result as unknown as DbNode));
+
+      console.log('NodeRepository: 映射后节点数量:', nodes.length);
+      console.log('NodeRepository: 第一个节点示例:', nodes[0]);
 
       return {
         success: true,
         data: nodes
       };
     } catch (error) {
+      console.error('NodeRepository: 查询失败:', error);
       return {
         success: false,
         error: `获取节点列表失败: ${error instanceof Error ? error.message : String(error)}`
