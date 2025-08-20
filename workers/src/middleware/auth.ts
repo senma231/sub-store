@@ -41,29 +41,26 @@ export const authMiddleware = async (c: AppContext, next: Next) => {
       return;
     }
 
-    // 方式2: JWT Token认证
-    if (token.includes('.')) {
-      try {
-        // 简化的JWT验证（实际应该使用JWT库）
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          
-          // 检查过期时间
-          if (payload.exp && payload.exp > Date.now()) {
-            // 将用户信息添加到上下文中
-            c.set('user', {
-              username: payload.username,
-              role: payload.role
-            });
-            await next();
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('JWT解析失败:', error);
-        // 继续到错误处理
+    // 方式2: Base64 Token认证（我们的格式）
+    try {
+      // 尝试解析base64编码的JSON token
+      const payload = JSON.parse(atob(token));
+
+      // 检查过期时间
+      if (payload.exp && payload.exp > Date.now()) {
+        // 将用户信息添加到上下文中
+        c.set('user', {
+          username: payload.username,
+          role: payload.role
+        });
+        await next();
+        return;
+      } else {
+        console.log('Token已过期:', new Date(payload.exp), '当前时间:', new Date());
       }
+    } catch (error) {
+      console.error('Token解析失败:', error);
+      // 继续到错误处理
     }
 
     return c.json({
