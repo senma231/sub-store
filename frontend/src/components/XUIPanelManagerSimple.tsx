@@ -85,11 +85,28 @@ const XUIPanelManagerSimple: React.FC = () => {
   // 保存面板
   const savePanel = async (values: any) => {
     try {
+      // 构建URL
+      const { host, port, protocol, basePath, ...otherValues } = values;
+      const baseUrl = `${protocol}://${host}:${port}`;
+      const url = basePath ? `${baseUrl}/${basePath}` : baseUrl;
+
+      const panelData = {
+        ...otherValues,
+        url,
+        // 如果是编辑且密码是***，则不更新密码
+        ...(editingPanel && values.password === '***' ? { password: undefined } : {})
+      };
+
+      // 移除undefined的password字段
+      if (panelData.password === undefined) {
+        delete panelData.password;
+      }
+
       if (editingPanel) {
-        await apiClient.put(`/api/xui-panels/${editingPanel.id}`, values);
+        await apiClient.put(`/api/xui-panels/${editingPanel.id}`, panelData);
         message.success('面板更新成功');
       } else {
-        await apiClient.post('/api/xui-panels', values);
+        await apiClient.post('/api/xui-panels', panelData);
         message.success('面板创建成功');
       }
 
@@ -119,10 +136,11 @@ const XUIPanelManagerSimple: React.FC = () => {
       setTestingConnection(panel.id);
       const result = await apiClient.post(`/api/xui-panels/${panel.id}/test`);
 
-      if (result.connected) {
-        message.success(`连接成功！延迟: ${result.latency}ms`);
+      if (result.success) {
+        message.success(`连接测试成功！状态: ${result.data.status}`);
+        loadPanels(); // 刷新列表以更新状态
       } else {
-        message.error(`连接失败: ${result.error}`);
+        message.error(`连接测试失败: ${result.error}`);
       }
     } catch (error) {
       message.error('测试连接失败');
@@ -137,11 +155,15 @@ const XUIPanelManagerSimple: React.FC = () => {
       setSyncingPanel(panel.id);
       const result = await apiClient.post(`/api/xui-panels/${panel.id}/sync`);
 
-      message.success(
-        `同步完成！发现${result.nodesFound}个节点，` +
-        `导入${result.nodesImported}个，更新${result.nodesUpdated}个`
-      );
-      loadPanels();
+      if (result.success) {
+        message.success(
+          `同步完成！发现${result.data.nodesFound}个节点，` +
+          `导入${result.data.nodesImported}个，更新${result.data.nodesUpdated}个`
+        );
+        loadPanels(); // 刷新列表以更新状态
+      } else {
+        message.error(`同步失败: ${result.error}`);
+      }
     } catch (error) {
       message.error('同步失败');
     } finally {
@@ -153,9 +175,28 @@ const XUIPanelManagerSimple: React.FC = () => {
   const openEditModal = (panel?: XUIPanel) => {
     setEditingPanel(panel || null);
     if (panel) {
+      // 解析URL为host、port、protocol
+      let host = '', port = 443, protocol = 'https', basePath = '';
+      try {
+        const url = new URL(panel.url);
+        host = url.hostname;
+        port = parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80);
+        protocol = url.protocol.replace(':', '');
+        basePath = url.pathname.replace(/^\/|\/$/g, ''); // 去掉前后斜杠
+      } catch (error) {
+        console.error('解析URL失败:', error);
+      }
+
       form.setFieldsValue({
-        ...panel,
-        password: '***' // 不显示真实密码
+        name: panel.name,
+        host,
+        port,
+        protocol,
+        basePath,
+        username: panel.username,
+        password: '***', // 不显示真实密码
+        enabled: panel.enabled,
+        remark: panel.remark
       });
     } else {
       form.resetFields();
@@ -203,9 +244,9 @@ const XUIPanelManagerSimple: React.FC = () => {
       title: '地址',
       key: 'address',
       render: (record: XUIPanel) => {
-        const basePath = record.basePath ? `/${record.basePath}` : '';
+        // 使用url字段而不是host/port/protocol
         return (
-          <Text code>{record.protocol}://{record.host}:{record.port}{basePath}</Text>
+          <Text code>{record.url}</Text>
         );
       }
     },
@@ -215,14 +256,22 @@ const XUIPanelManagerSimple: React.FC = () => {
       key: 'username'
     },
     {
-      title: '同步状态',
-      key: 'syncStatus',
-      render: (record: XUIPanel) => renderStatusTag(record.syncStatus, record.syncError)
+      title: '状态',
+      key: 'status',
+      render: (record: XUIPanel) => {
+        const statusConfig = {
+          online: { color: 'success', text: '在线' },
+          offline: { color: 'default', text: '离线' },
+          error: { color: 'error', text: '错误' }
+        };
+        const config = statusConfig[record.status as keyof typeof statusConfig] || statusConfig.offline;
+        return <Tag color={config.color}>{config.text}</Tag>;
+      }
     },
     {
       title: '最后同步',
-      dataIndex: 'lastSyncAt',
-      key: 'lastSyncAt',
+      dataIndex: 'lastSync',
+      key: 'lastSync',
       render: (text: string) => text ? new Date(text).toLocaleString() : '-'
     },
     {
