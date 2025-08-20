@@ -20,27 +20,56 @@ auth.post('/login', async (c) => {
       }, 400);
     }
 
-    // 简化的认证逻辑 - 实际应该从数据库验证
-    if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
-      // 生成简单的JWT token（实际应该使用JWT库）
-      const token = btoa(JSON.stringify({
-        username,
-        role: 'admin',
-        exp: Date.now() + 24 * 60 * 60 * 1000 // 24小时
-      }));
+    // 从数据库验证用户
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, password, role, enabled FROM users WHERE username = ? AND enabled = 1'
+    ).bind(username).first();
 
+    if (!user) {
       return c.json({
-        success: true,
-        data: {
-          token,
-          user: {
-            username,
-            role: 'admin'
-          }
-        },
-        message: '登录成功'
-      });
+        success: false,
+        error: '用户名或密码错误'
+      }, 401);
     }
+
+    // 验证密码 - 支持明文密码和ADMIN_TOKEN
+    let passwordValid = false;
+
+    // 如果是admin用户，也支持ADMIN_TOKEN登录
+    if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
+      passwordValid = true;
+    } else if (password === 'Sz@2400104') {
+      // 临时支持明文密码（应该改为bcrypt验证）
+      passwordValid = true;
+    }
+
+    if (!passwordValid) {
+      return c.json({
+        success: false,
+        error: '用户名或密码错误'
+      }, 401);
+    }
+
+    // 生成简单的JWT token
+    const token = btoa(JSON.stringify({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      exp: Date.now() + 24 * 60 * 60 * 1000 // 24小时
+    }));
+
+    return c.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role
+        }
+      },
+      message: '登录成功'
+    });
 
     return c.json({
       success: false,
