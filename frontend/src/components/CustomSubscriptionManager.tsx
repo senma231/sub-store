@@ -246,15 +246,17 @@ export const CustomSubscriptionManager: React.FC<CustomSubscriptionManagerProps>
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['custom-subscriptions'],
     queryFn: async () => {
-      // 这里应该调用实际的API
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
-      const response = await fetch(`${apiBaseUrl}/api/subscriptions`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      const result = await response.json();
-      return result.data || [];
+      try {
+        // 使用统一的API客户端
+        const { customSubscriptionService } = await import('@/services/customSubscriptionService');
+        const result = await customSubscriptionService.getCustomSubscriptions();
+        console.log('获取自定义订阅结果:', result);
+        return result.subscriptions || [];
+      } catch (error) {
+        console.error('获取自定义订阅失败:', error);
+        // 如果API调用失败，返回空数组避免TypeError
+        return [];
+      }
     },
   });
 

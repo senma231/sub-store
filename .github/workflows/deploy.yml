@@ -36,6 +36,16 @@ jobs:
         cd workers
         npm run build
 
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm install
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
   # 部署 Cloudflare Workers
   deploy-workers:
     needs: build-and-test
@@ -98,9 +108,37 @@ jobs:
         # JWT 密钥（可选，系统会自动生成）
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
+  # 部署前端到 Cloudflare Pages
+  deploy-frontend:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+
+    - name: Build frontend
+      run: cd frontend && npm run build
+
+    - name: Deploy to Cloudflare Pages
+      uses: cloudflare/wrangler-action@v3
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        workingDirectory: frontend
+        command: pages deploy dist --project-name=sub-store-frontend
+
   # 健康检查
   health-check:
-    needs: [deploy-workers]
+    needs: [deploy-workers, deploy-frontend]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
 
@@ -113,9 +151,15 @@ jobs:
         echo "检查 Workers API 部署状态..."
         curl -f https://sub-api.senma.io/health || echo "⚠️ API 健康检查失败，但继续执行"
 
+    - name: Health check - Frontend
+      run: |
+        echo "检查前端部署状态..."
+        curl -f https://sub.senma.io/ || echo "⚠️ 前端健康检查失败，但继续执行"
+
     - name: Notify deployment success
       if: success()
       run: |
         echo "✅ Deployment successful!"
+        echo "🌐 Frontend: https://sub.senma.io"
         echo "🔧 API: https://sub-api.senma.io"
-        echo "📊 Architecture: Cloudflare Workers + D1"
+        echo "📊 Architecture: Cloudflare Workers + D1 + Pages"

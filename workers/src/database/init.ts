@@ -107,6 +107,7 @@ export async function initializeDatabase(db: D1Database): Promise<DbResult<boole
         description TEXT,
         node_ids TEXT NOT NULL,
         enabled BOOLEAN DEFAULT true,
+        format TEXT DEFAULT 'v2ray',
         include_types TEXT,
         exclude_types TEXT,
         include_keywords TEXT,
@@ -123,6 +124,16 @@ export async function initializeDatabase(db: D1Database): Promise<DbResult<boole
         expires_at DATETIME
       )
     `).run();
+
+    // 添加format字段到现有表（如果不存在）
+    try {
+      await db.prepare(`
+        ALTER TABLE custom_subscriptions ADD COLUMN format TEXT DEFAULT 'v2ray'
+      `).run();
+    } catch (error) {
+      // 字段已存在，忽略错误
+      console.log('format字段已存在或添加失败:', error);
+    }
 
     // 创建访问日志表
     await db.prepare(`

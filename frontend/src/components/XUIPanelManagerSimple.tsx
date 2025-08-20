@@ -62,10 +62,21 @@ const XUIPanelManagerSimple: React.FC = () => {
   const loadPanels = async () => {
     try {
       setLoading(true);
-      const panels = await apiClient.get<XUIPanel[]>('/api/xui-panels');
-      setPanels(panels || []);
+      const result = await apiClient.get('/api/xui-panels');
+      console.log('X-UI面板API响应:', result);
+
+      // 处理新的分页响应格式
+      if (result && result.items) {
+        setPanels(result.items || []);
+      } else {
+        // 兼容旧格式
+        setPanels(result || []);
+      }
     } catch (error) {
+      console.error('加载面板失败:', error);
       message.error('加载X-UI面板列表失败');
+      // 设置空数组避免TypeError
+      setPanels([]);
     } finally {
       setLoading(false);
     }

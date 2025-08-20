@@ -18,6 +18,16 @@ nodes.use('*', authMiddleware);
 nodes.get('/', async (c) => {
   try {
     console.log('开始获取节点列表...');
+
+    // 获取查询参数
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+    const search = c.req.query('search');
+    const type = c.req.query('type');
+    const enabled = c.req.query('enabled');
+
+    console.log('查询参数:', { page, limit, search, type, enabled });
+
     const repository = new NodeRepository(c.env.DB);
     const result = await repository.findAll();
 
@@ -35,11 +45,45 @@ nodes.get('/', async (c) => {
       }, 500);
     }
 
-    console.log('返回节点数据，数量:', result.data?.length);
+    let nodes = result.data || [];
+
+    // 应用过滤条件
+    if (search) {
+      const searchLower = search.toLowerCase();
+      nodes = nodes.filter(node =>
+        node.name.toLowerCase().includes(searchLower) ||
+        node.server.toLowerCase().includes(searchLower) ||
+        (node.remark && node.remark.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (type) {
+      nodes = nodes.filter(node => node.type === type);
+    }
+
+    if (enabled !== undefined) {
+      const isEnabled = enabled === 'true';
+      nodes = nodes.filter(node => node.enabled === isEnabled);
+    }
+
+    // 计算分页
+    const total = nodes.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedNodes = nodes.slice(offset, offset + limit);
+
+    console.log('返回节点数据，总数:', total, '当前页:', paginatedNodes.length);
+
+    // 返回标准分页格式
     return c.json({
       success: true,
-      data: result.data,
-      total: result.data?.length || 0
+      data: {
+        items: paginatedNodes,
+        total: total,
+        page: page,
+        limit: limit,
+        totalPages: totalPages
+      }
     });
   } catch (error) {
     console.error('获取节点列表失败:', error);

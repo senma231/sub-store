@@ -17,20 +17,43 @@ subscriptions.use('*', authMiddleware);
 // 获取所有订阅
 subscriptions.get('/', async (c) => {
   try {
+    console.log('开始获取订阅列表...');
+
+    // 获取查询参数
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+
     const repository = new SubscriptionRepository(c.env.DB);
     const result = await repository.findAll();
 
     if (!result.success) {
+      console.error('获取订阅失败:', result.error);
       return c.json({
         success: false,
         error: result.error
       }, 500);
     }
 
+    const subscriptions = result.data || [];
+
+    // 计算分页
+    const total = subscriptions.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedSubscriptions = subscriptions.slice(offset, offset + limit);
+
+    console.log('返回订阅数据，总数:', total, '当前页:', paginatedSubscriptions.length);
+
+    // 返回标准分页格式
     return c.json({
       success: true,
-      data: result.data,
-      total: result.data?.length || 0
+      data: {
+        items: paginatedSubscriptions,
+        total: total,
+        page: page,
+        limit: limit,
+        totalPages: totalPages
+      }
     });
   } catch (error) {
     console.error('获取订阅列表失败:', error);

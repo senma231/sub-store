@@ -104,6 +104,7 @@ app.route('/auth', auth);
 // 统计信息
 app.get('/api/stats', async (c) => {
   try {
+    console.log('开始获取统计信息...');
     const nodeRepo = new NodeRepository(c.env.DB);
     const subRepo = new SubscriptionRepository(c.env.DB);
     const xuiRepo = new XUIPanelRepository(c.env.DB);
@@ -114,14 +115,23 @@ app.get('/api/stats', async (c) => {
       xuiRepo.findAll()
     ]);
 
+    console.log('节点统计结果:', nodeStats);
+    console.log('订阅统计结果:', subStats);
+
+    const statsData = {
+      totalNodes: nodeStats.success ? nodeStats.data?.total || 0 : 0,
+      activeNodes: nodeStats.success ? nodeStats.data?.enabled || 0 : 0, // 修复：使用enabled作为活跃节点数
+      totalSubscriptions: subStats.success ? subStats.data?.total || 0 : 0,
+      totalXUIPanels: xuiPanels.success ? xuiPanels.data?.length || 0 : 0,
+      totalRequests: 0,
+      nodeTypes: nodeStats.success ? nodeStats.data?.byType || {} : {}
+    };
+
+    console.log('返回统计数据:', statsData);
+
     return c.json({
       success: true,
-      data: {
-        totalNodes: nodeStats.success ? nodeStats.data?.total || 0 : 0,
-        totalSubscriptions: subStats.success ? subStats.data?.total || 0 : 0,
-        totalXUIPanels: xuiPanels.success ? xuiPanels.data?.length || 0 : 0,
-        totalRequests: 0
-      }
+      data: statsData
     });
   } catch (error) {
     console.error('获取统计信息失败:', error);

@@ -17,26 +17,49 @@ xuiPanels.use('*', authMiddleware);
 // 获取所有X-UI面板
 xuiPanels.get('/', async (c) => {
   try {
+    console.log('开始获取X-UI面板列表...');
+
+    // 获取查询参数
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+
     const repository = new XUIPanelRepository(c.env.DB);
     const result = await repository.findAll();
 
     if (!result.success) {
-      return c.json({ 
-        success: false, 
-        error: result.error 
+      console.error('获取X-UI面板失败:', result.error);
+      return c.json({
+        success: false,
+        error: result.error
       }, 500);
     }
 
+    const panels = result.data || [];
+
+    // 计算分页
+    const total = panels.length;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+    const paginatedPanels = panels.slice(offset, offset + limit);
+
+    console.log('返回X-UI面板数据，总数:', total, '当前页:', paginatedPanels.length);
+
+    // 返回标准分页格式
     return c.json({
       success: true,
-      data: result.data,
-      total: result.data?.length || 0
+      data: {
+        items: paginatedPanels,
+        total: total,
+        page: page,
+        limit: limit,
+        totalPages: totalPages
+      }
     });
   } catch (error) {
     console.error('获取X-UI面板列表失败:', error);
-    return c.json({ 
-      success: false, 
-      error: '服务器内部错误' 
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
     }, 500);
   }
 });
@@ -79,18 +102,36 @@ xuiPanels.get('/:id', async (c) => {
 xuiPanels.post('/', async (c) => {
   try {
     const body = await c.req.json();
-    
-    // 验证必需字段
-    if (!body.name || !body.url || !body.username || !body.password) {
+    console.log('创建X-UI面板请求数据:', body);
+
+    // 支持两种字段格式：新格式(host/port/protocol)和旧格式(url)
+    let url: string;
+
+    if (body.host && body.port && body.protocol) {
+      // 新格式：从host、port、protocol构建URL
+      const basePath = body.basePath ? `/${body.basePath}` : '';
+      url = `${body.protocol}://${body.host}:${body.port}${basePath}`;
+    } else if (body.url) {
+      // 旧格式：直接使用URL
+      url = body.url;
+    } else {
       return c.json({
         success: false,
-        error: '缺少必需字段: name, url, username, password'
+        error: '缺少必需字段: (host, port, protocol) 或 url'
+      }, 400);
+    }
+
+    // 验证其他必需字段
+    if (!body.name || !body.username || !body.password) {
+      return c.json({
+        success: false,
+        error: '缺少必需字段: name, username, password'
       }, 400);
     }
 
     // 验证URL格式
     try {
-      new URL(body.url);
+      new URL(url);
     } catch {
       return c.json({
         success: false,
@@ -98,9 +139,11 @@ xuiPanels.post('/', async (c) => {
       }, 400);
     }
 
+    console.log('构建的URL:', url);
+
     const panelData: Omit<XUIPanel, 'id' | 'createdAt' | 'updatedAt'> = {
       name: body.name,
-      url: body.url,
+      url: url,
       username: body.username,
       password: body.password,
       enabled: body.enabled !== false, // 默认启用

@@ -8,7 +8,30 @@ import type {
 export const customSubscriptionService = {
   // 获取自定义订阅列表
   getCustomSubscriptions: async (): Promise<{ subscriptions: CustomSubscription[]; total: number }> => {
-    return apiClient.get('/api/subscriptions');
+    try {
+      const result = await apiClient.get('/api/subscriptions');
+      console.log('订阅API响应:', result);
+
+      // 处理新的分页响应格式
+      if (result && result.items) {
+        return {
+          subscriptions: result.items,
+          total: result.total || 0
+        };
+      }
+
+      // 兼容旧格式
+      return {
+        subscriptions: result || [],
+        total: result?.length || 0
+      };
+    } catch (error) {
+      console.error('获取自定义订阅失败:', error);
+      return {
+        subscriptions: [],
+        total: 0
+      };
+    }
   },
 
   // 创建自定义订阅

@@ -65,17 +65,18 @@ export class SubscriptionRepository {
 
       const { success } = await this.db.prepare(`
         INSERT INTO custom_subscriptions (
-          uuid, name, description, node_ids, enabled,
+          uuid, name, description, node_ids, enabled, format,
           include_types, exclude_types, include_keywords, exclude_keywords,
           sort_by, sort_order, group_enabled, group_by, rename_rules,
           total_requests, created_at, updated_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         uuid,
         subscription.name,
         subscription.description || null,
         JSON.stringify(subscription.nodeIds),
         subscription.enabled ? 1 : 0,
+        (subscription as any).format || 'v2ray', // 添加format字段
         subscription.includeTypes ? JSON.stringify(subscription.includeTypes) : null,
         subscription.excludeTypes ? JSON.stringify(subscription.excludeTypes) : null,
         subscription.includeKeywords ? JSON.stringify(subscription.includeKeywords) : null,
@@ -228,8 +229,9 @@ export class SubscriptionRepository {
   /**
    * 将数据库记录映射为订阅对象
    */
-  private mapDbToSubscription(dbSub: DbSubscription): Subscription {
-    return {
+  private mapDbToSubscription(dbSub: DbSubscription): any {
+    const subscription = {
+      // 后端字段
       uuid: dbSub.id,
       name: dbSub.name,
       description: dbSub.description || undefined,
@@ -248,7 +250,15 @@ export class SubscriptionRepository {
       lastAccessed: dbSub.last_accessed || undefined,
       createdAt: dbSub.created_at,
       updatedAt: dbSub.updated_at,
-      expiresAt: (dbSub as any).expires_at || undefined
+      expiresAt: (dbSub as any).expires_at || undefined,
+
+      // 前端兼容字段
+      id: dbSub.id, // 前端期望的id字段
+      accessCount: dbSub.total_requests, // 前端期望的accessCount字段
+      lastAccessAt: dbSub.last_accessed || undefined, // 前端期望的lastAccessAt字段
+      format: (dbSub as any).format || 'v2ray' // 从数据库获取format字段
     };
+
+    return subscription;
   }
 }
