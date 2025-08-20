@@ -160,6 +160,11 @@ export const apiClient = {
   getResponse: <T = any>(url: string, params?: any): Promise<ApiResponse<T>> => {
     return api.get(url, { params }).then(response => response.data);
   },
+
+  // POST请求获取完整响应
+  postResponse: <T = any>(url: string, data?: any): Promise<ApiResponse<T>> => {
+    return api.post(url, data).then(response => response.data);
+  },
   
   // 上传文件
   upload: <T = any>(url: string, file: File, onProgress?: (progress: number) => void): Promise<T> => {

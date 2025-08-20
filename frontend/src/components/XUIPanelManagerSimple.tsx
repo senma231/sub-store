@@ -134,13 +134,13 @@ const XUIPanelManagerSimple: React.FC = () => {
   const testConnection = async (panel: XUIPanel) => {
     try {
       setTestingConnection(panel.id);
-      const result = await apiClient.post(`/api/xui-panels/${panel.id}/test`);
+      const response = await apiClient.postResponse(`/api/xui-panels/${panel.id}/test`);
 
-      if (result.success) {
-        message.success(`连接测试成功！状态: ${result.data.status}`);
+      if (response.success) {
+        message.success(`连接测试成功！状态: ${response.data.status}`);
         loadPanels(); // 刷新列表以更新状态
       } else {
-        message.error(`连接测试失败: ${result.error}`);
+        message.error(`连接测试失败: ${response.error}`);
       }
     } catch (error) {
       message.error('测试连接失败');
@@ -153,16 +153,16 @@ const XUIPanelManagerSimple: React.FC = () => {
   const syncNodes = async (panel: XUIPanel) => {
     try {
       setSyncingPanel(panel.id);
-      const result = await apiClient.post(`/api/xui-panels/${panel.id}/sync`);
+      const response = await apiClient.postResponse(`/api/xui-panels/${panel.id}/sync`);
 
-      if (result.success) {
+      if (response.success) {
         message.success(
-          `同步完成！发现${result.data.nodesFound}个节点，` +
-          `导入${result.data.nodesImported}个，更新${result.data.nodesUpdated}个`
+          `同步完成！发现${response.data.nodesFound}个节点，` +
+          `导入${response.data.nodesImported}个，更新${response.data.nodesUpdated}个`
         );
         loadPanels(); // 刷新列表以更新状态
       } else {
-        message.error(`同步失败: ${result.error}`);
+        message.error(`同步失败: ${response.error}`);
       }
     } catch (error) {
       message.error('同步失败');

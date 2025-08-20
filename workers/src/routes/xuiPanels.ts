@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { XUIPanelRepository } from '../repositories/xuiPanelRepository';
-import { XUIPanel } from '../../../shared/types';
+import { NodeRepository } from '../repositories/nodeRepository';
+import { XUIPanel, Node, ProxyType } from '../../../shared/types';
 import { authMiddleware } from '../middleware/auth';
 
 type Bindings = {
@@ -390,11 +391,223 @@ xuiPanels.post('/:id/test', async (c) => {
   }
 });
 
+// X-UI API 客户端
+class XUIApiClient {
+  constructor(private baseUrl: string, private username: string, private password: string) {}
+
+  async login(): Promise<string> {
+    try {
+      // 尝试不同的登录路径
+      const loginPaths = ['/login', '/api/login', '/xui/login'];
+      let loginUrl = `${this.baseUrl}/login`;
+
+      // 如果baseUrl已经包含路径，直接使用
+      if (this.baseUrl.includes('/xraes') || this.baseUrl.includes('/xui')) {
+        loginUrl = `${this.baseUrl}/login`;
+      }
+
+      console.log(`尝试登录: ${loginUrl}`);
+      const response = await fetch(loginUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Sub-Store/2.0.0'
+        },
+        body: `username=${encodeURIComponent(this.username)}&password=${encodeURIComponent(this.password)}`
+      });
+
+      console.log(`登录响应状态: ${response.status}`);
+      console.log(`登录响应头:`, Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log('登录失败响应:', responseText);
+        throw new Error(`登录失败: HTTP ${response.status} - ${responseText}`);
+      }
+
+      const responseText = await response.text();
+      console.log('登录响应内容:', responseText);
+
+      // 从响应头获取session cookie
+      const setCookieHeader = response.headers.get('set-cookie');
+      console.log('Set-Cookie头:', setCookieHeader);
+
+      if (!setCookieHeader) {
+        throw new Error('未获取到登录凭据');
+      }
+
+      // 提取session ID
+      const sessionMatch = setCookieHeader.match(/session=([^;]+)/);
+      if (!sessionMatch) {
+        throw new Error('未找到有效的session');
+      }
+
+      return sessionMatch[1];
+    } catch (error) {
+      console.error('登录过程出错:', error);
+      throw error;
+    }
+  }
+
+  async getInbounds(sessionId: string): Promise<any[]> {
+    try {
+      // 尝试不同的API路径
+      const apiPaths = [
+        '/panel/api/inbounds/list',
+        '/api/inbounds/list',
+        '/xui/api/inbounds/list',
+        '/panel/inbound/list'
+      ];
+
+      let apiUrl = `${this.baseUrl}/panel/api/inbounds/list`;
+
+      console.log(`尝试获取入站配置: ${apiUrl}`);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': `session=${sessionId}`
+        }
+      });
+
+      console.log(`入站配置响应状态: ${response.status}`);
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log('获取入站配置失败响应:', responseText);
+        throw new Error(`获取入站配置失败: HTTP ${response.status} - ${responseText}`);
+      }
+
+      const data = await response.json();
+      console.log('入站配置响应数据:', data);
+
+      if (!data.success) {
+        throw new Error(`API返回错误: ${data.msg || '未知错误'}`);
+      }
+
+      return data.obj || [];
+    } catch (error) {
+      console.error('获取入站配置出错:', error);
+      throw error;
+    }
+  }
+}
+
+// 解析X-UI入站配置为节点
+function parseXUIInbound(inbound: any): Node[] {
+  const nodes: Node[] = [];
+
+  try {
+    const settings = typeof inbound.settings === 'string'
+      ? JSON.parse(inbound.settings)
+      : inbound.settings;
+
+    const streamSettings = typeof inbound.streamSettings === 'string'
+      ? JSON.parse(inbound.streamSettings)
+      : inbound.streamSettings;
+
+    // 根据协议类型解析
+    switch (inbound.protocol) {
+      case 'vless':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client: any, index: number) => {
+            const node: Node = {
+              name: `${inbound.remark || 'VLESS'}-${client.email || index + 1}`,
+              type: 'vless' as ProxyType,
+              server: '', // 需要从外部获取服务器地址
+              port: inbound.port,
+              enabled: inbound.enable,
+              uuid: client.id,
+              encryption: 'none',
+              flow: client.flow || '',
+              network: streamSettings?.network || 'tcp',
+              security: streamSettings?.security || 'none',
+              sni: streamSettings?.tlsSettings?.serverName || streamSettings?.realitySettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'VLESS节点'}`,
+              tags: ['xui-sync']
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'vmess':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client: any, index: number) => {
+            const node: Node = {
+              name: `${inbound.remark || 'VMess'}-${client.email || index + 1}`,
+              type: 'vmess' as ProxyType,
+              server: '',
+              port: inbound.port,
+              enabled: inbound.enable,
+              uuid: client.id,
+              alterId: client.alterId || 0,
+              encryption: client.security || 'auto',
+              network: streamSettings?.network || 'tcp',
+              security: streamSettings?.security || 'none',
+              sni: streamSettings?.tlsSettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'VMess节点'}`,
+              tags: ['xui-sync']
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'trojan':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client: any, index: number) => {
+            const node: Node = {
+              name: `${inbound.remark || 'Trojan'}-${client.email || index + 1}`,
+              type: 'trojan' as ProxyType,
+              server: '',
+              port: inbound.port,
+              enabled: inbound.enable,
+              password: client.password,
+              network: streamSettings?.network || 'tcp',
+              sni: streamSettings?.tlsSettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'Trojan节点'}`,
+              tags: ['xui-sync']
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'shadowsocks':
+        const node: Node = {
+          name: inbound.remark || 'Shadowsocks',
+          type: 'ss' as ProxyType,
+          server: '',
+          port: inbound.port,
+          enabled: inbound.enable,
+          method: settings.method || 'aes-256-gcm',
+          password: settings.password,
+          remark: `从X-UI面板同步: ${inbound.remark || 'Shadowsocks节点'}`,
+          tags: ['xui-sync']
+        };
+        nodes.push(node);
+        break;
+    }
+  } catch (error) {
+    console.error('解析入站配置失败:', error, inbound);
+  }
+
+  return nodes;
+}
+
 // 同步X-UI面板节点
 xuiPanels.post('/:id/sync', async (c) => {
   try {
     const id = c.req.param('id');
     const repository = new XUIPanelRepository(c.env.DB);
+    const nodeRepository = new NodeRepository(c.env.DB);
 
     // 获取面板信息
     const panelResult = await repository.findById(id);
@@ -408,25 +621,70 @@ xuiPanels.post('/:id/sync', async (c) => {
     const panel = panelResult.data;
 
     try {
-      // 这里是模拟同步逻辑，实际需要调用X-UI API获取节点
       console.log(`开始同步面板 ${panel.name} 的节点...`);
+      console.log(`面板URL: ${panel.url}, 用户名: ${panel.username}`);
 
-      // 模拟同步过程
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 创建X-UI API客户端
+      const apiClient = new XUIApiClient(panel.url, panel.username, panel.password);
 
-      // 模拟同步结果
-      const syncResult = {
-        nodesFound: Math.floor(Math.random() * 10) + 1,
-        nodesImported: Math.floor(Math.random() * 5) + 1,
-        nodesUpdated: Math.floor(Math.random() * 3)
-      };
+      // 登录获取session
+      console.log('尝试登录X-UI面板...');
+      const sessionId = await apiClient.login();
+      console.log('X-UI面板登录成功，Session ID:', sessionId.substring(0, 10) + '...');
+
+      // 获取入站配置
+      console.log('获取入站配置...');
+      const inbounds = await apiClient.getInbounds(sessionId);
+      console.log(`获取到 ${inbounds.length} 个入站配置`);
+      console.log('入站配置示例:', inbounds[0]);
+
+      let nodesFound = 0;
+      let nodesImported = 0;
+      let nodesUpdated = 0;
+
+      // 解析并导入节点
+      for (const inbound of inbounds) {
+        const parsedNodes = parseXUIInbound(inbound);
+        nodesFound += parsedNodes.length;
+
+        for (const node of parsedNodes) {
+          // 设置服务器地址（从面板URL提取）
+          try {
+            const panelUrl = new URL(panel.url);
+            node.server = panelUrl.hostname;
+          } catch {
+            node.server = panel.url.replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+          }
+
+          try {
+            // 直接创建新节点，暂时不检查重复
+            const createResult = await nodeRepository.create(node);
+            if (createResult.success) {
+              nodesImported++;
+              console.log(`成功导入节点: ${node.name}`);
+            } else {
+              console.error(`导入节点失败: ${node.name}`, createResult.error);
+            }
+          } catch (nodeError) {
+            console.error(`处理节点时出错: ${node.name}`, nodeError);
+          }
+        }
+      }
 
       // 更新面板状态
       await repository.update(id, {
         status: 'online',
         lastSync: new Date().toISOString(),
-        totalNodes: syncResult.nodesFound
+        totalNodes: nodesFound
       });
+
+      const syncResult = {
+        nodesFound,
+        nodesImported,
+        nodesUpdated
+      };
+
+      console.log('同步完成:', syncResult);
 
       return c.json({
         success: true,
@@ -434,6 +692,8 @@ xuiPanels.post('/:id/sync', async (c) => {
         message: '节点同步成功'
       });
     } catch (error) {
+      console.error('同步过程中出错:', error);
+
       // 更新为错误状态
       await repository.update(id, {
         status: 'error',
@@ -450,6 +710,43 @@ xuiPanels.post('/:id/sync', async (c) => {
     return c.json({
       success: false,
       error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 测试连接
+xuiPanels.post('/test', async (c) => {
+  try {
+    const { url, username, password } = await c.req.json();
+
+    if (!url || !username || !password) {
+      return c.json({ success: false, error: '缺少必要参数' }, 400);
+    }
+
+    console.log(`测试连接到: ${url}, 用户名: ${username}`);
+
+    // 创建API客户端并测试连接
+    const apiClient = new XUIApiClient(url, username, password);
+
+    console.log('开始测试登录...');
+    const sessionId = await apiClient.login();
+    console.log('登录成功，测试获取入站配置...');
+
+    const inbounds = await apiClient.getInbounds(sessionId);
+    console.log(`获取到 ${inbounds.length} 个入站配置`);
+
+    return c.json({
+      success: true,
+      message: '连接测试成功',
+      sessionId: sessionId.substring(0, 10) + '...',
+      inboundCount: inbounds.length,
+      sampleInbound: inbounds[0] || null
+    });
+  } catch (error) {
+    console.error('测试连接失败:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : '连接测试失败'
     }, 500);
   }
 });
