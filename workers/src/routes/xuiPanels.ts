@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { XUIPanelRepository } from '../repositories/xuiPanelRepository';
 import { XUIPanel } from '../../../shared/types';
+import { authMiddleware } from '../middleware/auth';
 
 type Bindings = {
   DB: D1Database;
@@ -9,48 +10,6 @@ type Bindings = {
 };
 
 const xuiPanels = new Hono<{ Bindings: Bindings }>();
-
-// 简单的认证中间件
-const authMiddleware = async (c: any, next: any) => {
-  try {
-    const authorization = c.req.header('Authorization');
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Authorization header is required'
-      }, 401);
-    }
-
-    const token = authorization.substring(7);
-
-    // 简单验证：如果token等于ADMIN_TOKEN，则认为是有效的
-    if (token === c.env.ADMIN_TOKEN) {
-      await next();
-      return;
-    }
-
-    // 尝试验证JWT token（简化版本）
-    if (token.includes('.')) {
-      // 看起来像JWT token，暂时允许通过
-      await next();
-      return;
-    }
-
-    return c.json({
-      success: false,
-      error: 'Unauthorized',
-      message: 'Invalid JWT token'
-    }, 401);
-  } catch (error) {
-    console.error('认证中间件错误:', error);
-    return c.json({
-      success: false,
-      error: 'Internal Server Error',
-      message: 'Authentication failed'
-    }, 500);
-  }
-};
 
 // 启用认证中间件
 xuiPanels.use('*', authMiddleware);

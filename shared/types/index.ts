@@ -141,6 +141,56 @@ export interface HysteriaNode extends BaseNode {
 // 联合类型
 export type ProxyNode = VlessNode | VmessNode | TrojanNode | ShadowsocksNode | Socks5Node | Hysteria2Node | HysteriaNode;
 
+// 通用节点类型（用于数据库操作）
+export interface Node extends BaseNode {
+  // 认证配置 - 所有协议的可选字段
+  uuid?: string;
+  encryption?: string;
+  flow?: string;
+  alterId?: number;
+  security?: string;
+  password?: string;
+  method?: string;
+  username?: string;
+
+  // 网络配置
+  network?: NetworkType;
+  tls?: boolean;
+  sni?: string;
+  alpn?: string[];
+  fingerprint?: string;
+  allowInsecure?: boolean;
+
+  // WebSocket 配置
+  wsPath?: string;
+  wsHeaders?: Record<string, string>;
+
+  // HTTP/2 配置
+  h2Path?: string;
+  h2Host?: string[];
+
+  // gRPC 配置
+  grpcServiceName?: string;
+  grpcMode?: 'gun' | 'multi';
+
+  // 插件配置
+  plugin?: string;
+  pluginOpts?: string;
+
+  // Hysteria 配置
+  obfs?: string;
+  obfsPassword?: string;
+  upMbps?: number;
+  downMbps?: number;
+  auth?: string;
+  authStr?: string;
+  protocol?: string;
+
+  // 统计信息
+  totalRequests?: number;
+  lastUsed?: string;
+}
+
 // 订阅配置
 export interface SubscriptionConfig {
   id: string;
@@ -152,6 +202,29 @@ export interface SubscriptionConfig {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// 自定义订阅类型（用于API）
+export interface Subscription {
+  uuid: string;
+  name: string;
+  description?: string;
+  nodeIds: string[];
+  enabled: boolean;
+  includeTypes?: string[];
+  excludeTypes?: string[];
+  includeKeywords?: string[];
+  excludeKeywords?: string[];
+  sortBy: string;
+  sortOrder: string;
+  groupEnabled: boolean;
+  groupBy: string;
+  renameRules?: any[];
+  totalRequests: number;
+  lastAccessed?: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
 }
 
 // 节点过滤器
