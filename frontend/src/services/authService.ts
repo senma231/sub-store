@@ -8,7 +8,7 @@ import type {
 export const authService = {
   // 登录 - 直接使用axios而不是apiClient，因为登录响应格式特殊
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    const response = await fetch('https://sub-api.senma.io/auth/login', {
+    const response = await fetch('https://sub-api.senma.io/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,21 +27,21 @@ export const authService = {
 
   // 验证 token
   verifyToken: async (): Promise<VerifyTokenResponse> => {
-    return apiClient.post('/auth/verify');
+    return apiClient.post('/api/auth/verify');
   },
 
   // 刷新 token
   refreshToken: async (): Promise<LoginResponse> => {
-    return apiClient.post('/auth/refresh');
+    return apiClient.post('/api/auth/refresh');
   },
 
   // 登出
   logout: async (): Promise<void> => {
-    return apiClient.post('/auth/logout');
+    return apiClient.post('/api/auth/logout');
   },
 
   // 修改密码
   changePassword: async (data: ChangePasswordRequest): Promise<void> => {
-    return apiClient.post('/auth/change-password', data);
+    return apiClient.post('/api/auth/change-password', data);
   },
 };
