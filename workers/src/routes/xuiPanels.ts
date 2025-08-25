@@ -698,8 +698,12 @@ xuiPanels.post('/:id/sync', async (c) => {
         console.log(`使用Bridge服务同步: ${bridgeUrl}`);
         const syncResult = await syncXUIWithBridge(bridgeUrl, panel.url, panel.username, panel.password);
         if (syncResult.success) {
-          inbounds = syncResult.data.nodes || [];
-          console.log(`通过Bridge服务获取到 ${inbounds.length} 个节点`);
+          // Bridge服务现在返回解析后的节点数据
+          const nodes = syncResult.data.nodes || [];
+          console.log(`通过Bridge服务获取到 ${nodes.length} 个节点`);
+
+          // 直接使用解析后的节点
+          inbounds.push(...nodes);
         } else {
           throw new Error(`Bridge服务同步失败: ${syncResult.error}`);
         }
@@ -725,25 +729,14 @@ xuiPanels.post('/:id/sync', async (c) => {
         }
       }
 
-      let nodesFound = 0;
+      let nodesFound = inbounds.length;
       let nodesImported = 0;
       let nodesUpdated = 0;
 
-      // 处理节点数据
-      let nodesToProcess: any[] = [];
+      console.log(`解析完成，共获得 ${nodesFound} 个节点`);
 
-      if (bridgeUrl) {
-        // Bridge服务返回的已经是解析好的节点
-        nodesToProcess = inbounds;
-        nodesFound = nodesToProcess.length;
-      } else {
-        // 直接连接需要解析入站配置
-        for (const inbound of inbounds) {
-          const parsedNodes = parseXUIInbound(inbound);
-          nodesToProcess.push(...parsedNodes);
-          nodesFound += parsedNodes.length;
-        }
-      }
+      // 处理节点数据
+      const nodesToProcess = inbounds;
 
       // 导入节点（支持去重和更新）
       for (const node of nodesToProcess) {
@@ -760,7 +753,7 @@ xuiPanels.post('/:id/sync', async (c) => {
         // 设置来源信息
         node.sourceType = 'xui';
         node.sourcePanelId = panel.id;
-        node.sourceNodeId = node.id; // 使用原始的XUI节点ID作为来源节点ID
+        // sourceNodeId应该保持原有的值，用于去重判断
 
         // 查询IP地理位置信息
         try {
@@ -774,7 +767,7 @@ xuiPanels.post('/:id/sync', async (c) => {
 
         try {
           // 检查是否已存在相同来源的节点
-          const existingResult = await nodeRepository.findBySource(panel.id, node.id);
+          const existingResult = await nodeRepository.findBySource(panel.id, node.sourceNodeId);
 
           if (existingResult.success && existingResult.data) {
             // 节点已存在，更新它

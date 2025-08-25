@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-01-15"
 node_compat = true
 
+# 自定义域名路由
+route = { pattern = "sub-api.senma.io/*", zone_name = "senma.io" }
+
 # D1 数据库配置
 [[d1_databases]]
 binding = "DB"
@@ -14,7 +17,7 @@ database_id = "860a7c44-0556-4c2f-a004-aa373740c18c"
 ENVIRONMENT = "production"
 APP_NAME = "Sub-Store"
 APP_VERSION = "2.0.0"
-XUI_BRIDGE_URL = "http://bridge.senma.io:3002"
+XUI_BRIDGE_URL = "https://bridge.senma.io"
 
 # 开发环境配置
 [env.development]

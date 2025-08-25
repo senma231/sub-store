@@ -235,9 +235,20 @@ subscriptions.put('/:uuid/traffic', async (c) => {
       }, 400);
     }
 
-    // 这里应该更新订阅的流量设置
-    // 由于当前数据库表结构中没有流量相关字段，我们先返回成功响应
-    // 在实际实现中，需要扩展数据库表结构来存储流量设置
+    // 使用数据库更新流量设置
+    const subscriptionRepo = new SubscriptionRepository(c.env.DB);
+    const result = await subscriptionRepo.updateTrafficSettings(uuid, {
+      enabled: enabled || false,
+      limit: limit || 0,
+      resetCycle: resetCycle || 'monthly'
+    });
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: result.error || '更新流量设置失败'
+      }, 400);
+    }
 
     return c.json({
       success: true,
@@ -262,21 +273,20 @@ subscriptions.get('/:uuid/traffic', async (c) => {
   try {
     const uuid = c.req.param('uuid');
 
-    // 这里应该从数据库获取实际的流量统计数据
-    // 目前返回模拟数据
-    const stats = {
-      limit: 0,
-      used: 0,
-      remaining: 0,
-      percentage: 0,
-      resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      resetCycle: 'monthly',
-      enabled: false
-    };
+    // 从数据库获取实际的流量统计数据
+    const subscriptionRepo = new SubscriptionRepository(c.env.DB);
+    const result = await subscriptionRepo.getTrafficStats(uuid);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: result.error || '获取流量统计失败'
+      }, 400);
+    }
 
     return c.json({
       success: true,
-      data: stats
+      data: result.data
     });
   } catch (error) {
     console.error('获取流量统计失败:', error);
@@ -328,6 +338,35 @@ subscriptions.post('/batch', async (c) => {
     });
   } catch (error) {
     console.error('批量操作失败:', error);
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 重置订阅流量
+subscriptions.post('/:uuid/traffic/reset', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+
+    // 重置流量统计
+    const subscriptionRepo = new SubscriptionRepository(c.env.DB);
+    const result = await subscriptionRepo.resetTraffic(uuid);
+
+    if (!result.success) {
+      return c.json({
+        success: false,
+        error: result.error || '重置流量失败'
+      }, 400);
+    }
+
+    return c.json({
+      success: true,
+      message: '流量已重置'
+    });
+  } catch (error) {
+    console.error('重置流量失败:', error);
     return c.json({
       success: false,
       error: '服务器内部错误'

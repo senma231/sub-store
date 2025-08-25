@@ -138,6 +138,13 @@ CREATE TABLE IF NOT EXISTS custom_subscriptions (
     total_requests INTEGER DEFAULT 0,
     last_accessed DATETIME,
     
+    -- 流量管理
+    traffic_limit INTEGER DEFAULT 0, -- 流量限制(字节)，0表示无限制
+    traffic_used INTEGER DEFAULT 0, -- 已使用流量(字节)
+    traffic_reset_cycle TEXT DEFAULT 'monthly', -- 重置周期: daily/weekly/monthly/manual
+    traffic_reset_date DATETIME, -- 下次重置日期
+    traffic_enabled BOOLEAN DEFAULT false, -- 是否启用流量限制
+
     -- 时间戳
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

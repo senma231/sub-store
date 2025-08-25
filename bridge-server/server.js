@@ -95,6 +95,135 @@ class XUIApiClient {
   }
 }
 
+// 解析X-UI入站配置为节点
+function parseXUIInbound(inbound) {
+  const nodes = [];
+
+  try {
+    const settings = typeof inbound.settings === 'string'
+      ? JSON.parse(inbound.settings)
+      : inbound.settings;
+
+    const streamSettings = typeof inbound.streamSettings === 'string'
+      ? JSON.parse(inbound.streamSettings)
+      : inbound.streamSettings;
+
+    // 根据协议类型解析
+    switch (inbound.protocol) {
+      case 'vless':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client, index) => {
+            const node = {
+              id: `xui_${inbound.id}_${client.id}_${Date.now()}`,
+              name: `${inbound.remark || 'VLESS'}-${client.email || index + 1}`,
+              type: 'vless',
+              server: '', // 需要从外部获取服务器地址
+              port: inbound.port,
+              enabled: inbound.enable,
+              uuid: client.id,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              encryption: 'none',
+              flow: client.flow || '',
+              network: streamSettings?.network || 'tcp',
+              security: streamSettings?.security || 'none',
+              sni: streamSettings?.tlsSettings?.serverName || streamSettings?.realitySettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'VLESS节点'}`,
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id}` // 使用入站ID和客户端ID组合作为唯一标识
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'vmess':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client, index) => {
+            const node = {
+              id: `xui_${inbound.id}_${client.id}_${Date.now()}`,
+              name: `${inbound.remark || 'VMess'}-${client.email || index + 1}`,
+              type: 'vmess',
+              server: '',
+              port: inbound.port,
+              enabled: inbound.enable,
+              uuid: client.id,
+              alterId: client.alterId || 0,
+              encryption: client.security || 'auto',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              network: streamSettings?.network || 'tcp',
+              security: streamSettings?.security || 'none',
+              sni: streamSettings?.tlsSettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'VMess节点'}`,
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id}`
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'trojan':
+        if (settings.clients && Array.isArray(settings.clients)) {
+          settings.clients.forEach((client, index) => {
+            const node = {
+              id: `xui_${inbound.id}_${client.id || client.password}_${Date.now()}`,
+              name: `${inbound.remark || 'Trojan'}-${client.email || index + 1}`,
+              type: 'trojan',
+              server: '',
+              port: inbound.port,
+              enabled: inbound.enable,
+              password: client.password,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              network: streamSettings?.network || 'tcp',
+              sni: streamSettings?.tlsSettings?.serverName,
+              wsPath: streamSettings?.wsSettings?.path,
+              grpcServiceName: streamSettings?.grpcSettings?.serviceName,
+              remark: `从X-UI面板同步: ${inbound.remark || 'Trojan节点'}`,
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id || client.password}`
+            };
+            nodes.push(node);
+          });
+        }
+        break;
+
+      case 'shadowsocks':
+        const node = {
+          id: `xui_${inbound.id}_ss_${Date.now()}`,
+          name: inbound.remark || 'Shadowsocks',
+          type: 'ss',
+          server: '',
+          port: inbound.port,
+          enabled: inbound.enable,
+          method: settings.method || 'aes-256-gcm',
+          password: settings.password,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          remark: `从X-UI面板同步: ${inbound.remark || 'Shadowsocks节点'}`,
+          tags: ['xui-sync'],
+          sourceType: 'xui',
+          sourceNodeId: `${inbound.id}_ss`
+        };
+        nodes.push(node);
+        break;
+    }
+  } catch (error) {
+    console.error('解析入站配置失败:', error, inbound);
+  }
+
+  return nodes;
+}
+
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({
@@ -176,12 +305,23 @@ app.post('/api/xui/sync', async (req, res) => {
     const inbounds = result.obj || [];
     console.log(`获取到 ${inbounds.length} 个入站配置`);
 
+    // 解析入站配置为节点
+    const nodes = [];
+    for (const inbound of inbounds) {
+      const parsedNodes = parseXUIInbound(inbound);
+      nodes.push(...parsedNodes);
+    }
+
+    console.log(`解析得到 ${nodes.length} 个节点`);
+
     res.json({
       success: true,
-      message: `成功获取 ${inbounds.length} 个入站配置`,
+      message: `成功获取 ${inbounds.length} 个入站配置，解析得到 ${nodes.length} 个节点`,
       data: {
+        nodes: nodes,
         inbounds: inbounds,
-        count: inbounds.length,
+        nodeCount: nodes.length,
+        inboundCount: inbounds.length,
         timestamp: new Date().toISOString()
       }
     });

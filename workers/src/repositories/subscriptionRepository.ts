@@ -4,6 +4,142 @@ export class SubscriptionRepository {
   constructor(private db: D1Database) {}
 
   /**
+   * 更新订阅流量设置
+   */
+  async updateTrafficSettings(uuid: string, settings: {
+    enabled: boolean;
+    limit: number;
+    resetCycle: string;
+  }): Promise<DbResult<boolean>> {
+    try {
+      const resetDate = this.calculateNextResetDate(settings.resetCycle);
+
+      const result = await this.db.prepare(`
+        UPDATE custom_subscriptions
+        SET traffic_enabled = ?,
+            traffic_limit = ?,
+            traffic_reset_cycle = ?,
+            traffic_reset_date = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?
+      `).bind(
+        settings.enabled,
+        settings.limit,
+        settings.resetCycle,
+        resetDate,
+        uuid
+      ).run();
+
+      if (result.changes === 0) {
+        return { success: false, error: '订阅不存在' };
+      }
+
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('更新流量设置失败:', error);
+      return { success: false, error: '数据库操作失败' };
+    }
+  }
+
+  /**
+   * 获取订阅流量统计
+   */
+  async getTrafficStats(uuid: string): Promise<DbResult<{
+    limit: number;
+    used: number;
+    remaining: number;
+    percentage: number;
+    resetDate: string;
+    resetCycle: string;
+    enabled: boolean;
+  }>> {
+    try {
+      const result = await this.db.prepare(`
+        SELECT traffic_limit, traffic_used, traffic_reset_cycle,
+               traffic_reset_date, traffic_enabled
+        FROM custom_subscriptions
+        WHERE uuid = ?
+      `).bind(uuid).first();
+
+      if (!result) {
+        return { success: false, error: '订阅不存在' };
+      }
+
+      const limit = result.traffic_limit || 0;
+      const used = result.traffic_used || 0;
+      const remaining = Math.max(0, limit - used);
+      const percentage = limit > 0 ? Math.round((used / limit) * 100) : 0;
+
+      return {
+        success: true,
+        data: {
+          limit,
+          used,
+          remaining,
+          percentage,
+          resetDate: result.traffic_reset_date || '',
+          resetCycle: result.traffic_reset_cycle || 'monthly',
+          enabled: result.traffic_enabled || false
+        }
+      };
+    } catch (error) {
+      console.error('获取流量统计失败:', error);
+      return { success: false, error: '数据库操作失败' };
+    }
+  }
+
+  /**
+   * 重置订阅流量
+   */
+  async resetTraffic(uuid: string): Promise<DbResult<boolean>> {
+    try {
+      const result = await this.db.prepare(`
+        UPDATE custom_subscriptions
+        SET traffic_used = 0,
+            traffic_reset_date = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?
+      `).bind(
+        this.calculateNextResetDate('monthly'), // 默认按月重置
+        uuid
+      ).run();
+
+      if (result.changes === 0) {
+        return { success: false, error: '订阅不存在' };
+      }
+
+      return { success: true, data: true };
+    } catch (error) {
+      console.error('重置流量失败:', error);
+      return { success: false, error: '数据库操作失败' };
+    }
+  }
+
+  /**
+   * 计算下次重置日期
+   */
+  private calculateNextResetDate(cycle: string): string {
+    const now = new Date();
+    let nextReset: Date;
+
+    switch (cycle) {
+      case 'daily':
+        nextReset = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        break;
+      case 'weekly':
+        nextReset = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        nextReset = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        break;
+      default:
+        nextReset = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    return nextReset.toISOString();
+  }
+
+  /**
    * 获取所有订阅
    */
   async findAll(): Promise<DbResult<CustomSubscriptionData[]>> {
