@@ -14,7 +14,7 @@ export interface NodeListParams {
 
 export interface BatchOperationRequest {
   action: 'enable' | 'disable' | 'delete';
-  nodeIds: string[];
+  ids: string[];
 }
 
 export interface BatchOperationResponse {

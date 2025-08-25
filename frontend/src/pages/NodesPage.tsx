@@ -372,7 +372,7 @@ const NodesPage: React.FC = () => {
   const handleToggleStatus = (node: ProxyNode) => {
     batchMutation.mutate({
       action: node.enabled ? 'disable' : 'enable',
-      nodeIds: [node.id],
+      ids: [node.id],
     });
   };
 
@@ -385,7 +385,7 @@ const NodesPage: React.FC = () => {
 
     batchMutation.mutate({
       action,
-      nodeIds: selectedRowKeys,
+      ids: selectedRowKeys,
     });
   };
 
