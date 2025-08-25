@@ -46,8 +46,9 @@ export const authMiddleware = async (c: AppContext, next: Next) => {
       // 尝试解析base64编码的JSON token
       const payload = JSON.parse(atob(token));
 
-      // 检查过期时间
-      if (payload.exp && payload.exp > Date.now()) {
+      // 检查过期时间 (exp是秒级时间戳，需要转换为毫秒)
+      const expTime = payload.exp * 1000; // 转换为毫秒
+      if (payload.exp && expTime > Date.now()) {
         // 将用户信息添加到上下文中
         c.set('user', {
           username: payload.username,
@@ -56,7 +57,7 @@ export const authMiddleware = async (c: AppContext, next: Next) => {
         await next();
         return;
       } else {
-        console.log('Token已过期:', new Date(payload.exp), '当前时间:', new Date());
+        console.log('Token已过期:', new Date(expTime), '当前时间:', new Date());
       }
     } catch (error) {
       console.error('Token解析失败:', error);
@@ -102,7 +103,8 @@ export const optionalAuthMiddleware = async (c: AppContext, next: Next) => {
           if (parts.length === 3) {
             const payload = JSON.parse(atob(parts[1]));
             
-            if (payload.exp && payload.exp > Date.now()) {
+            const expTime = payload.exp * 1000; // 转换为毫秒
+            if (payload.exp && expTime > Date.now()) {
               c.set('user', {
                 username: payload.username,
                 role: payload.role
