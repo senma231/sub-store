@@ -73,6 +73,14 @@ CREATE TABLE IF NOT EXISTS nodes (
     total_requests INTEGER DEFAULT 0,
     last_used DATETIME,
 
+    -- 来源信息
+    source_type TEXT, -- 'manual', 'xui', 'import' 等
+    source_panel_id TEXT, -- 来源面板ID（如果是从XUI同步）
+    source_node_id TEXT, -- 来源节点ID（用于去重）
+    location_country TEXT, -- IP地理位置 - 国家
+    location_region TEXT, -- IP地理位置 - 地区
+    location_city TEXT, -- IP地理位置 - 城市
+
     -- 时间戳
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

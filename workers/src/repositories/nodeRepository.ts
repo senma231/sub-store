@@ -64,6 +64,34 @@ export class NodeRepository {
   }
 
   /**
+   * 根据来源查找节点（用于去重）
+   */
+  async findBySource(sourcePanelId: string, sourceNodeId: string): Promise<DbResult<Node | null>> {
+    try {
+      const result = await this.db.prepare(`
+        SELECT * FROM nodes WHERE source_panel_id = ? AND source_node_id = ?
+      `).bind(sourcePanelId, sourceNodeId).first();
+
+      if (!result) {
+        return {
+          success: true,
+          data: null
+        };
+      }
+
+      return {
+        success: true,
+        data: this.mapDbToNode(result as unknown as DbNode)
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `查找节点失败: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
    * 创建节点
    */
   async create(node: Omit<Node, 'id' | 'createdAt' | 'updatedAt'>): Promise<DbResult<Node>> {
@@ -78,8 +106,10 @@ export class NodeRepository {
           network, tls, sni, alpn, fingerprint, allow_insecure,
           ws_path, ws_headers, h2_path, h2_host, grpc_service_name, grpc_mode,
           plugin, plugin_opts, obfs, obfs_password, up_mbps, down_mbps,
-          auth, auth_str, protocol, total_requests, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          auth, auth_str, protocol, total_requests,
+          source_type, source_panel_id, source_node_id, location_country, location_region, location_city,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         id, node.name, node.type, node.server, node.port,
         node.enabled ? 1 : 0,
@@ -98,7 +128,10 @@ export class NodeRepository {
         node.obfs || null, node.obfsPassword || null,
         node.upMbps || null, node.downMbps || null,
         node.auth || null, node.authStr || null, node.protocol || null,
-        0, now, now
+        0, // total_requests
+        node.sourceType || null, node.sourcePanelId || null, node.sourceNodeId || null,
+        node.locationCountry || null, node.locationRegion || null, node.locationCity || null,
+        now, now
       ).run();
 
       if (!success) {
@@ -166,6 +199,76 @@ export class NodeRepository {
       }
 
       return await this.findById(id);
+    } catch (error) {
+      return {
+        success: false,
+        error: `更新节点失败: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * 更新节点
+   */
+  async update(id: string, updates: Partial<Omit<Node, 'id' | 'createdAt'>>): Promise<DbResult<Node>> {
+    try {
+      const now = new Date().toISOString();
+
+      const { success } = await this.db.prepare(`
+        UPDATE nodes SET
+          name = ?, type = ?, server = ?, port = ?, enabled = ?, tags = ?, remark = ?,
+          uuid = ?, encryption = ?, flow = ?, alter_id = ?, security = ?, password = ?, method = ?, username = ?,
+          network = ?, tls = ?, sni = ?, alpn = ?, fingerprint = ?, allow_insecure = ?,
+          ws_path = ?, ws_headers = ?, h2_path = ?, h2_host = ?, grpc_service_name = ?, grpc_mode = ?,
+          plugin = ?, plugin_opts = ?, obfs = ?, obfs_password = ?, up_mbps = ?, down_mbps = ?,
+          auth = ?, auth_str = ?, protocol = ?,
+          source_type = ?, source_panel_id = ?, source_node_id = ?,
+          location_country = ?, location_region = ?, location_city = ?,
+          updated_at = ?
+        WHERE id = ?
+      `).bind(
+        updates.name, updates.type, updates.server, updates.port,
+        updates.enabled ? 1 : 0,
+        updates.tags ? JSON.stringify(updates.tags) : null,
+        updates.remark || null,
+        updates.uuid || null, updates.encryption || null, updates.flow || null,
+        updates.alterId || null, updates.security || null, updates.password || null,
+        updates.method || null, updates.username || null, updates.network || null,
+        updates.tls ? 1 : 0, updates.sni || null,
+        updates.alpn ? JSON.stringify(updates.alpn) : null,
+        updates.fingerprint || null, updates.allowInsecure ? 1 : 0,
+        updates.wsPath || null, updates.wsHeaders ? JSON.stringify(updates.wsHeaders) : null,
+        updates.h2Path || null, updates.h2Host ? JSON.stringify(updates.h2Host) : null,
+        updates.grpcServiceName || null, updates.grpcMode || null,
+        updates.plugin || null, updates.pluginOpts || null,
+        updates.obfs || null, updates.obfsPassword || null,
+        updates.upMbps || null, updates.downMbps || null,
+        updates.auth || null, updates.authStr || null, updates.protocol || null,
+        updates.sourceType || null, updates.sourcePanelId || null, updates.sourceNodeId || null,
+        updates.locationCountry || null, updates.locationRegion || null, updates.locationCity || null,
+        now, id
+      ).run();
+
+      if (!success) {
+        return {
+          success: false,
+          error: '更新节点失败'
+        };
+      }
+
+      // 返回更新后的节点
+      const result = await this.findById(id);
+      if (!result.success || !result.data) {
+        return {
+          success: false,
+          error: '获取更新后的节点失败'
+        };
+      }
+
+      return {
+        success: true,
+        data: result.data
+      };
     } catch (error) {
       return {
         success: false,
@@ -323,6 +426,12 @@ export class NodeRepository {
       protocol: dbNode.protocol || undefined,
       totalRequests: dbNode.total_requests,
       lastUsed: dbNode.last_used || undefined,
+      sourceType: (dbNode.source_type as 'manual' | 'xui' | 'import') || undefined,
+      sourcePanelId: dbNode.source_panel_id || undefined,
+      sourceNodeId: dbNode.source_node_id || undefined,
+      locationCountry: dbNode.location_country || undefined,
+      locationRegion: dbNode.location_region || undefined,
+      locationCity: dbNode.location_city || undefined,
       createdAt: dbNode.created_at,
       updatedAt: dbNode.updated_at
     };

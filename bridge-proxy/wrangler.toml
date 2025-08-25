@@ -1,0 +1,11 @@
+name = "xui-bridge-proxy"
+main = "src/index.js"
+compatibility_date = "2023-12-01"
+
+[env.production]
+name = "xui-bridge-proxy"
+route = { pattern = "bridge.senma.io/*", zone_name = "senma.io" }
+
+[vars]
+BRIDGE_SERVER_IP = "141.11.91.40"
+BRIDGE_SERVER_PORT = "3002"

@@ -20,7 +20,8 @@ import {
   PauseCircleOutlined,
   ReloadOutlined,
   ExportOutlined,
-  ImportOutlined
+  ImportOutlined,
+  CloudServerOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nodeService } from '../services/nodeService';
@@ -29,8 +30,41 @@ import { NodeImportModal } from '../components/NodeImportModal';
 import { CustomSubscriptionModal } from '../components/CustomSubscriptionModal';
 import type { ProxyNode, CreateCustomSubscriptionRequest, CreateCustomSubscriptionResponse } from '@/types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Search } = Input;
+
+// 辅助函数：获取国家旗帜emoji
+const getCountryFlag = (countryCode?: string): string => {
+  if (!countryCode || countryCode.length !== 2) {
+    return '🌍';
+  }
+
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+
+  return String.fromCodePoint(...codePoints);
+};
+
+// 辅助函数：格式化地理位置信息
+const formatLocation = (record: any): string => {
+  const parts: string[] = [];
+
+  if (record.locationCountry) {
+    parts.push(record.locationCountry);
+  }
+
+  if (record.locationRegion && record.locationRegion !== record.locationCountry) {
+    parts.push(record.locationRegion);
+  }
+
+  if (record.locationCity && record.locationCity !== record.locationRegion) {
+    parts.push(record.locationCity);
+  }
+
+  return parts.join(', ') || '未知';
+};
 
 const NodesPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
@@ -168,12 +202,37 @@ const NodesPage: React.FC = () => {
       dataIndex: 'server',
       key: 'server',
       ellipsis: true,
+      render: (server: string, record: ProxyNode) => (
+        <Space direction="vertical" size={0}>
+          <span>{server}</span>
+          {(record as any).locationCountry && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {getCountryFlag((record as any).locationCountry)} {formatLocation(record as any)}
+            </Text>
+          )}
+        </Space>
+      ),
     },
     {
       title: '端口',
       dataIndex: 'port',
       key: 'port',
       width: 80,
+    },
+    {
+      title: '来源',
+      key: 'source',
+      width: 100,
+      render: (_: any, record: ProxyNode) => {
+        const sourceType = (record as any).sourceType;
+        if (sourceType === 'xui') {
+          return <Tag color="blue" icon={<CloudServerOutlined />}>XUI</Tag>;
+        } else if (sourceType === 'import') {
+          return <Tag color="green" icon={<ImportOutlined />}>导入</Tag>;
+        } else {
+          return <Tag color="default" icon={<EditOutlined />}>手动</Tag>;
+        }
+      },
     },
     {
       title: '状态',

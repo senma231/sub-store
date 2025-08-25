@@ -131,3 +131,9 @@ error.log
 手动部署教程.md
 新架构手动部署教程.md
 纯网页部署教程.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

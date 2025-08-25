@@ -36,6 +36,7 @@
   "author": "Sub-Store Team",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@types/node": "^22.15.29",
     "concurrently": "^8.2.2"
   },

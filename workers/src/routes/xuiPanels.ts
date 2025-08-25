@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { XUIPanelRepository } from '../repositories/xuiPanelRepository';
 import { NodeRepository } from '../repositories/nodeRepository';
 import { XUIPanel, Node, ProxyType } from '../../../shared/types';
+import { IPLocationService } from '../services/ipLocationService';
 import { authMiddleware } from '../middleware/auth';
 
 type Bindings = {
@@ -326,7 +327,7 @@ xuiPanels.post('/:id/test', async (c) => {
   try {
     const id = c.req.param('id');
     const repository = new XUIPanelRepository(c.env.DB);
-    
+
     // 获取面板信息
     const panelResult = await repository.findById(id);
     if (!panelResult.success || !panelResult.data) {
@@ -337,9 +338,27 @@ xuiPanels.post('/:id/test', async (c) => {
     }
 
     const panel = panelResult.data;
-    
+
+    console.log(`测试连接到面板: ${panel.name}, URL: ${panel.url}, 用户名: ${panel.username}`);
+
     try {
-      // 测试连接（这里是模拟，实际需要调用X-UI API）
+      // 优先使用桥接服务进行测试
+      const bridgeUrl = c.env.XUI_BRIDGE_URL;
+      if (bridgeUrl) {
+        console.log(`使用桥接服务测试连接: ${bridgeUrl}`);
+        const result = await testXUIWithBridge(c, bridgeUrl, panel.url, panel.username, panel.password);
+
+        // 更新面板状态
+        const status = result.success ? 'online' : 'error';
+        await repository.update(id, {
+          status,
+          lastSync: new Date().toISOString()
+        });
+
+        return result;
+      }
+
+      // 回退到简单的页面可访问性测试
       const testUrl = `${panel.url}/login`;
       const response = await fetch(testUrl, {
         method: 'GET',
@@ -353,23 +372,24 @@ xuiPanels.post('/:id/test', async (c) => {
       const status = isOnline ? 'online' : 'error';
 
       // 更新面板状态
-      await repository.update(id, { 
+      await repository.update(id, {
         status,
         lastSync: new Date().toISOString()
       });
 
       return c.json({
-        success: true,
+        success: isOnline,
         data: {
           status,
           statusCode: response.status,
-          responseTime: Date.now() // 简化的响应时间
+          responseTime: Date.now(),
+          connected: isOnline
         },
         message: isOnline ? '连接测试成功' : '连接测试失败'
       });
     } catch (error) {
       // 更新为错误状态
-      await repository.update(id, { 
+      await repository.update(id, {
         status: 'error',
         lastSync: new Date().toISOString()
       });
@@ -379,15 +399,16 @@ xuiPanels.post('/:id/test', async (c) => {
         error: `连接测试失败: ${error instanceof Error ? error.message : String(error)}`,
         data: {
           status: 'error',
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
+          connected: false
         }
       });
     }
   } catch (error) {
     console.error('测试X-UI面板连接失败:', error);
-    return c.json({ 
-      success: false, 
-      error: '服务器内部错误' 
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
     }, 500);
   }
 });
@@ -554,7 +575,9 @@ function parseXUIInbound(inbound: any): Node[] {
               wsPath: streamSettings?.wsSettings?.path,
               grpcServiceName: streamSettings?.grpcSettings?.serviceName,
               remark: `从X-UI面板同步: ${inbound.remark || 'VLESS节点'}`,
-              tags: ['xui-sync']
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id}` // 使用入站ID和客户端ID组合作为唯一标识
             };
             nodes.push(node);
           });
@@ -582,7 +605,9 @@ function parseXUIInbound(inbound: any): Node[] {
               wsPath: streamSettings?.wsSettings?.path,
               grpcServiceName: streamSettings?.grpcSettings?.serviceName,
               remark: `从X-UI面板同步: ${inbound.remark || 'VMess节点'}`,
-              tags: ['xui-sync']
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id}`
             };
             nodes.push(node);
           });
@@ -607,7 +632,9 @@ function parseXUIInbound(inbound: any): Node[] {
               wsPath: streamSettings?.wsSettings?.path,
               grpcServiceName: streamSettings?.grpcSettings?.serviceName,
               remark: `从X-UI面板同步: ${inbound.remark || 'Trojan节点'}`,
-              tags: ['xui-sync']
+              tags: ['xui-sync'],
+              sourceType: 'xui',
+              sourceNodeId: `${inbound.id}_${client.id || client.password}`
             };
             nodes.push(node);
           });
@@ -627,7 +654,9 @@ function parseXUIInbound(inbound: any): Node[] {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           remark: `从X-UI面板同步: ${inbound.remark || 'Shadowsocks节点'}`,
-          tags: ['xui-sync']
+          tags: ['xui-sync'],
+          sourceType: 'xui',
+          sourceNodeId: `${inbound.id}_ss`
         };
         nodes.push(node);
         break;
@@ -716,7 +745,7 @@ xuiPanels.post('/:id/sync', async (c) => {
         }
       }
 
-      // 导入节点
+      // 导入节点（支持去重和更新）
       for (const node of nodesToProcess) {
         // 设置服务器地址（从面板URL提取）
         if (!node.server || node.server === 'localhost') {
@@ -728,14 +757,84 @@ xuiPanels.post('/:id/sync', async (c) => {
           }
         }
 
+        // 设置来源信息
+        node.sourceType = 'xui';
+        node.sourcePanelId = panel.id;
+        node.sourceNodeId = node.id; // 使用原始的XUI节点ID作为来源节点ID
+
+        // 查询IP地理位置信息
         try {
-          // 直接创建新节点，暂时不检查重复
-          const createResult = await nodeRepository.create(node);
-          if (createResult.success) {
-            nodesImported++;
-            console.log(`成功导入节点: ${node.name}`);
+          const locationInfo = await IPLocationService.getLocation(node.server);
+          node.locationCountry = locationInfo.country;
+          node.locationRegion = locationInfo.region;
+          node.locationCity = locationInfo.city;
+        } catch (locationError) {
+          console.warn(`获取IP地理位置失败 (${node.server}):`, locationError);
+        }
+
+        try {
+          // 检查是否已存在相同来源的节点
+          const existingResult = await nodeRepository.findBySource(panel.id, node.id);
+
+          if (existingResult.success && existingResult.data) {
+            // 节点已存在，更新它
+            const updateResult = await nodeRepository.update(existingResult.data.id, {
+              name: node.name,
+              type: node.type,
+              server: node.server,
+              port: node.port,
+              enabled: node.enabled,
+              tags: node.tags,
+              remark: node.remark,
+              uuid: node.uuid,
+              encryption: node.encryption,
+              flow: node.flow,
+              alterId: node.alterId,
+              security: node.security,
+              password: node.password,
+              method: node.method,
+              username: node.username,
+              network: node.network,
+              tls: node.tls,
+              sni: node.sni,
+              alpn: node.alpn,
+              fingerprint: node.fingerprint,
+              allowInsecure: node.allowInsecure,
+              wsPath: node.wsPath,
+              wsHeaders: node.wsHeaders,
+              h2Path: node.h2Path,
+              h2Host: node.h2Host,
+              grpcServiceName: node.grpcServiceName,
+              grpcMode: node.grpcMode,
+              plugin: node.plugin,
+              pluginOpts: node.pluginOpts,
+              obfs: node.obfs,
+              obfsPassword: node.obfsPassword,
+              upMbps: node.upMbps,
+              downMbps: node.downMbps,
+              auth: node.auth,
+              authStr: node.authStr,
+              protocol: node.protocol,
+              sourceType: node.sourceType,
+              sourcePanelId: node.sourcePanelId,
+              sourceNodeId: node.sourceNodeId
+            });
+
+            if (updateResult.success) {
+              nodesUpdated++;
+              console.log(`成功更新节点: ${node.name}`);
+            } else {
+              console.error(`更新节点失败: ${node.name}`, updateResult.error);
+            }
           } else {
-            console.error(`导入节点失败: ${node.name}`, createResult.error);
+            // 节点不存在，创建新节点
+            const createResult = await nodeRepository.create(node);
+            if (createResult.success) {
+              nodesImported++;
+              console.log(`成功导入节点: ${node.name}`);
+            } else {
+              console.error(`导入节点失败: ${node.name}`, createResult.error);
+            }
           }
         } catch (nodeError) {
           console.error(`处理节点时出错: ${node.name}`, nodeError);

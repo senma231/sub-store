@@ -1,0 +1,27 @@
+{
+  "name": "xui-bridge-server",
+  "version": "1.0.0",
+  "description": "X-UI Bridge Server for Sub-Store",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "install-service": "pm2 start ecosystem.config.js",
+    "stop-service": "pm2 stop xui-bridge",
+    "restart-service": "pm2 restart xui-bridge"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["xui", "bridge", "proxy", "sub-store"],
+  "author": "Sub-Store",
+  "license": "MIT"
+}

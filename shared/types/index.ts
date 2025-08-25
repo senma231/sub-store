@@ -20,6 +20,15 @@ export interface BaseNode {
   enabled: boolean;
   tags?: string[];
   remark?: string;
+
+  // 来源信息
+  sourceType?: 'manual' | 'xui' | 'import';
+  sourcePanelId?: string; // 来源面板ID
+  sourceNodeId?: string; // 来源节点ID（用于去重）
+  locationCountry?: string; // IP地理位置 - 国家
+  locationRegion?: string; // IP地理位置 - 地区
+  locationCity?: string; // IP地理位置 - 城市
+
   createdAt: string;
   updatedAt: string;
 }
@@ -383,6 +392,14 @@ export interface DbNode {
   // 统计信息
   total_requests: number;
   last_used?: string;
+
+  // 来源信息
+  source_type?: string;
+  source_panel_id?: string;
+  source_node_id?: string;
+  location_country?: string;
+  location_region?: string;
+  location_city?: string;
 
   // 时间戳
   created_at: string;

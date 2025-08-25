@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { NodeRepository } from '../repositories/nodeRepository';
 import { Node } from '../../../shared/types';
+import { IPLocationService } from '../services/ipLocationService';
 import { authMiddleware } from '../middleware/auth';
 
 type Bindings = {
@@ -406,6 +407,74 @@ nodes.get('/export', async (c) => {
     return c.json({
       success: false,
       error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 查询IP地理位置
+nodes.get('/ip-location/:ip', async (c) => {
+  try {
+    const ip = c.req.param('ip');
+
+    if (!ip) {
+      return c.json({
+        success: false,
+        error: '缺少IP参数'
+      }, 400);
+    }
+
+    const location = await IPLocationService.getLocation(ip);
+
+    return c.json({
+      success: true,
+      data: {
+        ip,
+        location,
+        formatted: IPLocationService.formatLocation(location),
+        flag: IPLocationService.getCountryFlag(location.countryCode)
+      }
+    });
+  } catch (error) {
+    console.error('查询IP地理位置失败:', error);
+    return c.json({
+      success: false,
+      error: '查询IP地理位置失败'
+    }, 500);
+  }
+});
+
+// 批量查询IP地理位置
+nodes.post('/ip-locations', async (c) => {
+  try {
+    const { ips } = await c.req.json();
+
+    if (!Array.isArray(ips)) {
+      return c.json({
+        success: false,
+        error: 'ips参数必须是数组'
+      }, 400);
+    }
+
+    const locations = await IPLocationService.getLocations(ips);
+    const result: Record<string, any> = {};
+
+    for (const [ip, location] of locations) {
+      result[ip] = {
+        location,
+        formatted: IPLocationService.formatLocation(location),
+        flag: IPLocationService.getCountryFlag(location.countryCode)
+      };
+    }
+
+    return c.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('批量查询IP地理位置失败:', error);
+    return c.json({
+      success: false,
+      error: '批量查询IP地理位置失败'
     }, 500);
   }
 });
