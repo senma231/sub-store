@@ -1,0 +1,21 @@
+{
+  "name": "xui-bridge",
+  "version": "1.0.0",
+  "description": "X-UI Bridge Service for Sub-Store",
+  "main": "xui-bridge.js",
+  "scripts": {
+    "start": "node xui-bridge.js",
+    "dev": "nodemon xui-bridge.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["xui", "bridge", "proxy", "sub-store"],
+  "author": "Sub-Store",
+  "license": "MIT"
+}

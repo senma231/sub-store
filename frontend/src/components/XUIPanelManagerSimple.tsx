@@ -136,14 +136,33 @@ const XUIPanelManagerSimple: React.FC = () => {
       setTestingConnection(panel.id);
       const response = await apiClient.postResponse(`/api/xui-panels/${panel.id}/test`);
 
-      if (response.success) {
-        message.success(`连接测试成功！状态: ${response.data.status}`);
-        loadPanels(); // 刷新列表以更新状态
+      console.log('测试连接响应:', response);
+
+      if (response.success && response.data) {
+        // 检查实际的连接状态
+        if (response.data.status === 'error' || response.data.error) {
+          message.error(`连接测试失败: ${response.data.error || '连接错误'}`);
+        } else {
+          // 显示详细的成功信息
+          let successMsg = '连接测试成功！';
+          if (response.data.latency) {
+            successMsg += ` 延迟: ${response.data.latency}ms`;
+          }
+          if (response.data.bridgeService) {
+            successMsg += ' (通过Bridge服务)';
+          }
+          if (response.data.inboundCount !== undefined) {
+            successMsg += ` 发现${response.data.inboundCount}个入站配置`;
+          }
+          message.success(successMsg);
+          loadPanels(); // 刷新列表以更新状态
+        }
       } else {
-        message.error(`连接测试失败: ${response.error}`);
+        message.error(`连接测试失败: ${response.error || '未知错误'}`);
       }
-    } catch (error) {
-      message.error('测试连接失败');
+    } catch (error: any) {
+      console.error('测试连接失败:', error);
+      message.error(`连接测试失败: ${error.message || '网络错误'}`);
     } finally {
       setTestingConnection(null);
     }
@@ -155,17 +174,27 @@ const XUIPanelManagerSimple: React.FC = () => {
       setSyncingPanel(panel.id);
       const response = await apiClient.postResponse(`/api/xui-panels/${panel.id}/sync`);
 
-      if (response.success) {
-        message.success(
-          `同步完成！发现${response.data.nodesFound}个节点，` +
-          `导入${response.data.nodesImported}个，更新${response.data.nodesUpdated}个`
-        );
-        loadPanels(); // 刷新列表以更新状态
+      console.log('同步节点响应:', response);
+
+      if (response.success && response.data) {
+        // 检查同步结果
+        const { nodesFound, nodesImported, nodesUpdated, error } = response.data;
+
+        if (error) {
+          message.error(`同步失败: ${error}`);
+        } else {
+          message.success(
+            `同步完成！发现${nodesFound || 0}个节点，` +
+            `导入${nodesImported || 0}个，更新${nodesUpdated || 0}个`
+          );
+          loadPanels(); // 刷新列表以更新状态
+        }
       } else {
-        message.error(`同步失败: ${response.error}`);
+        message.error(`同步失败: ${response.error || '未知错误'}`);
       }
-    } catch (error) {
-      message.error('同步失败');
+    } catch (error: any) {
+      console.error('同步节点失败:', error);
+      message.error(`同步失败: ${error.message || '网络错误'}`);
     } finally {
       setSyncingPanel(null);
     }

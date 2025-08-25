@@ -12,20 +12,55 @@ const auth = new Hono<{ Bindings: Bindings }>();
 auth.post('/login', async (c) => {
   try {
     const { username, password } = await c.req.json();
-    
-    if (!username || !password) {
+
+    if (!password) {
       return c.json({
         success: false,
-        error: '用户名和密码不能为空'
+        error: '密码不能为空'
       }, 400);
     }
 
-    // 从数据库验证用户
-    const user = await c.env.DB.prepare(
-      'SELECT id, username, password, role, enabled FROM users WHERE username = ? AND enabled = 1'
-    ).bind(username).first();
+    // 支持两种登录方式：
+    // 1. 只提供密码（默认为admin用户）
+    // 2. 提供用户名和密码
+    let targetUsername = username || 'admin';
+    let user = null;
 
-    if (!user) {
+    // 如果只提供密码，且密码匹配ADMIN_TOKEN或默认密码，则使用admin用户
+    if (!username && (password === c.env.ADMIN_TOKEN || password === 'Sz@2400104')) {
+      // 查找或创建admin用户
+      user = await c.env.DB.prepare(
+        'SELECT id, username, password, role, enabled FROM users WHERE username = ? AND enabled = 1'
+      ).bind('admin').first();
+
+      if (!user) {
+        // 创建默认admin用户
+        const adminId = 'admin_' + Date.now();
+        await c.env.DB.prepare(`
+          INSERT INTO users (id, username, password, role, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(adminId, 'admin', 'Sz@2400104', 'admin', 1, new Date().toISOString(), new Date().toISOString()).run();
+
+        user = {
+          id: adminId,
+          username: 'admin',
+          role: 'admin',
+          enabled: 1
+        };
+      }
+    } else if (username) {
+      // 从数据库验证用户
+      user = await c.env.DB.prepare(
+        'SELECT id, username, password, role, enabled FROM users WHERE username = ? AND enabled = 1'
+      ).bind(username).first();
+
+      if (!user) {
+        return c.json({
+          success: false,
+          error: '用户名或密码错误'
+        }, 401);
+      }
+    } else {
       return c.json({
         success: false,
         error: '用户名或密码错误'
@@ -36,7 +71,7 @@ auth.post('/login', async (c) => {
     let passwordValid = false;
 
     // 如果是admin用户，也支持ADMIN_TOKEN登录
-    if (username === 'admin' && password === c.env.ADMIN_TOKEN) {
+    if (user.username === 'admin' && (password === c.env.ADMIN_TOKEN || password === 'Sz@2400104')) {
       passwordValid = true;
     } else if (password === 'Sz@2400104') {
       // 临时支持明文密码（应该改为bcrypt验证）
@@ -60,6 +95,7 @@ auth.post('/login', async (c) => {
 
     return c.json({
       success: true,
+      token, // 直接返回token字段，保持兼容性
       data: {
         token,
         user: {

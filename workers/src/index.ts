@@ -99,7 +99,7 @@ app.get('/health', async (c) => {
 app.route('/api/xui-panels', xuiPanels);
 app.route('/api/nodes', nodes);
 app.route('/api/subscriptions', subscriptions);
-app.route('/auth', auth);
+app.route('/api/auth', auth);
 
 // 统计信息
 app.get('/api/stats', async (c) => {

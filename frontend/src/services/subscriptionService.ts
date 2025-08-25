@@ -27,7 +27,7 @@ export const subscriptionService = {
     groupBy?: string;
     rename?: Array<{ pattern: string; replacement: string }>;
   }): string => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://sub-api.senma.io';
     const url = new URL(`/sub/${format}`, apiBaseUrl);
     
     if (options) {
@@ -73,7 +73,7 @@ export const subscriptionService = {
     }
 
     // 使用完整的API URL而不是相对路径
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://substore-api.senmago231.workers.dev';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://sub-api.senma.io';
     const response = await fetch(`${apiBaseUrl}/sub/${format}?${params.toString()}`);
     return response.text();
   },
