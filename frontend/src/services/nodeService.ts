@@ -35,7 +35,7 @@ export const nodeService = {
 
   // 批量操作
   batchOperation: async (request: BatchOperationRequest): Promise<BatchOperationResponse> => {
-    return apiClient.post('/api/nodes/batch', request);
+    return apiClient.postResponse('/api/nodes/batch', request);
   },
 
   // 导入节点
