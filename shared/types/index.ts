@@ -214,12 +214,13 @@ export interface SubscriptionConfig {
 }
 
 // 自定义订阅类型（用于API）
-export interface Subscription {
+export interface CustomSubscriptionData {
   uuid: string;
   name: string;
   description?: string;
   nodeIds: string[];
   enabled: boolean;
+  format?: string; // 添加format字段
   includeTypes?: string[];
   excludeTypes?: string[];
   includeKeywords?: string[];

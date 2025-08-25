@@ -323,6 +323,7 @@ nodes.post('/batch', async (c) => {
     return c.json({
       success: true,
       data: result.data,
+      affectedCount: ids.length, // 添加影响的节点数量
       message: `批量${action}操作成功`
     });
   } catch (error) {

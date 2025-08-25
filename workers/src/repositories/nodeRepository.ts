@@ -161,51 +161,7 @@ export class NodeRepository {
     }
   }
 
-  /**
-   * 更新节点
-   */
-  async update(id: string, updates: Partial<Omit<Node, 'id' | 'createdAt' | 'updatedAt'>>): Promise<DbResult<Node | null>> {
-    try {
-      const now = new Date().toISOString();
-      
-      const { success } = await this.db.prepare(`
-        UPDATE nodes SET
-          name = COALESCE(?, name),
-          type = COALESCE(?, type),
-          server = COALESCE(?, server),
-          port = COALESCE(?, port),
-          enabled = COALESCE(?, enabled),
-          tags = COALESCE(?, tags),
-          remark = COALESCE(?, remark),
-          updated_at = ?
-        WHERE id = ?
-      `).bind(
-        updates.name || null,
-        updates.type || null,
-        updates.server || null,
-        updates.port || null,
-        updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : null,
-        updates.tags ? JSON.stringify(updates.tags) : null,
-        updates.remark || null,
-        now,
-        id
-      ).run();
 
-      if (!success) {
-        return {
-          success: false,
-          error: '更新节点失败'
-        };
-      }
-
-      return await this.findById(id);
-    } catch (error) {
-      return {
-        success: false,
-        error: `更新节点失败: ${error instanceof Error ? error.message : String(error)}`
-      };
-    }
-  }
 
   /**
    * 更新节点

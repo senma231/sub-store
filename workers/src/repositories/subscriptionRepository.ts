@@ -1,4 +1,4 @@
-import { Subscription, DbSubscription, DbResult } from '../../../shared/types';
+import { CustomSubscriptionData, DbSubscription, DbResult } from '../../../shared/types';
 
 export class SubscriptionRepository {
   constructor(private db: D1Database) {}
@@ -6,7 +6,7 @@ export class SubscriptionRepository {
   /**
    * 获取所有订阅
    */
-  async findAll(): Promise<DbResult<Subscription[]>> {
+  async findAll(): Promise<DbResult<CustomSubscriptionData[]>> {
     try {
       const { results } = await this.db.prepare(`
         SELECT * FROM custom_subscriptions 
@@ -30,7 +30,7 @@ export class SubscriptionRepository {
   /**
    * 根据UUID获取订阅
    */
-  async findByUuid(uuid: string): Promise<DbResult<Subscription | null>> {
+  async findByUuid(uuid: string): Promise<DbResult<CustomSubscriptionData | null>> {
     try {
       const result = await this.db.prepare(`
         SELECT * FROM custom_subscriptions WHERE uuid = ?
@@ -58,7 +58,7 @@ export class SubscriptionRepository {
   /**
    * 创建订阅
    */
-  async create(subscription: Omit<Subscription, 'uuid' | 'createdAt' | 'updatedAt'>): Promise<DbResult<Subscription>> {
+  async create(subscription: Omit<CustomSubscriptionData, 'uuid' | 'createdAt' | 'updatedAt'>): Promise<DbResult<CustomSubscriptionData>> {
     try {
       const uuid = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const now = new Date().toISOString();
@@ -76,7 +76,7 @@ export class SubscriptionRepository {
         subscription.description || null,
         JSON.stringify(subscription.nodeIds),
         subscription.enabled ? 1 : 0,
-        (subscription as any).format || 'v2ray', // 添加format字段
+        subscription.format || 'v2ray', // 添加format字段
         subscription.includeTypes ? JSON.stringify(subscription.includeTypes) : null,
         subscription.excludeTypes ? JSON.stringify(subscription.excludeTypes) : null,
         subscription.includeKeywords ? JSON.stringify(subscription.includeKeywords) : null,
@@ -99,7 +99,7 @@ export class SubscriptionRepository {
         };
       }
 
-      const createdSubscription: Subscription = {
+      const createdSubscription: CustomSubscriptionData = {
         uuid,
         ...subscription,
         totalRequests: 0,
@@ -122,7 +122,7 @@ export class SubscriptionRepository {
   /**
    * 更新订阅
    */
-  async update(uuid: string, updates: Partial<Omit<Subscription, 'uuid' | 'createdAt' | 'updatedAt'>>): Promise<DbResult<Subscription | null>> {
+  async update(uuid: string, updates: Partial<Omit<CustomSubscriptionData, 'uuid' | 'createdAt' | 'updatedAt'>>): Promise<DbResult<CustomSubscriptionData | null>> {
     try {
       const now = new Date().toISOString();
       

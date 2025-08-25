@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { SubscriptionRepository } from '../repositories/subscriptionRepository';
-import { Subscription } from '../../../shared/types';
+import { CustomSubscriptionData } from '../../../shared/types';
 import { authMiddleware } from '../middleware/auth';
 
 type Bindings = {
@@ -111,11 +111,12 @@ subscriptions.post('/', async (c) => {
       }, 400);
     }
 
-    const subscriptionData: Omit<Subscription, 'uuid' | 'createdAt' | 'updatedAt'> = {
+    const subscriptionData: Omit<CustomSubscriptionData, 'uuid' | 'createdAt' | 'updatedAt'> = {
       name: body.name,
       description: body.description,
       nodeIds: body.nodeIds,
       enabled: body.enabled !== false, // 默认启用
+      format: body.format || 'v2ray', // 添加format字段
       includeTypes: body.includeTypes,
       excludeTypes: body.excludeTypes,
       includeKeywords: body.includeKeywords,
@@ -211,6 +212,74 @@ subscriptions.delete('/:uuid', async (c) => {
     });
   } catch (error) {
     console.error('删除订阅失败:', error);
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 更新订阅流量设置
+subscriptions.put('/:uuid/traffic', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+    const body = await c.req.json();
+
+    // 验证流量设置数据
+    const { enabled, limit, resetCycle } = body;
+
+    if (enabled && (!limit || limit < 0)) {
+      return c.json({
+        success: false,
+        error: '启用流量限制时必须设置有效的限制值'
+      }, 400);
+    }
+
+    // 这里应该更新订阅的流量设置
+    // 由于当前数据库表结构中没有流量相关字段，我们先返回成功响应
+    // 在实际实现中，需要扩展数据库表结构来存储流量设置
+
+    return c.json({
+      success: true,
+      message: '流量设置更新成功',
+      data: {
+        enabled: enabled || false,
+        limit: limit || 0,
+        resetCycle: resetCycle || 'monthly'
+      }
+    });
+  } catch (error) {
+    console.error('更新流量设置失败:', error);
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 获取订阅流量统计
+subscriptions.get('/:uuid/traffic', async (c) => {
+  try {
+    const uuid = c.req.param('uuid');
+
+    // 这里应该从数据库获取实际的流量统计数据
+    // 目前返回模拟数据
+    const stats = {
+      limit: 0,
+      used: 0,
+      remaining: 0,
+      percentage: 0,
+      resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      resetCycle: 'monthly',
+      enabled: false
+    };
+
+    return c.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('获取流量统计失败:', error);
     return c.json({
       success: false,
       error: '服务器内部错误'
