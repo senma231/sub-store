@@ -168,6 +168,70 @@ auth.post('/logout', async (c) => {
   });
 });
 
+// 验证令牌
+auth.post('/verify', async (c) => {
+  try {
+    const authorization = c.req.header('Authorization');
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      return c.json({
+        success: false,
+        error: '未提供认证令牌'
+      }, 401);
+    }
+
+    const token = authorization.substring(7);
+
+    // 方式1: 直接使用ADMIN_TOKEN认证
+    if (token === c.env.ADMIN_TOKEN) {
+      return c.json({
+        success: true,
+        data: {
+          user: {
+            username: 'admin',
+            role: 'admin'
+          }
+        },
+        message: '令牌验证成功'
+      });
+    }
+
+    // 方式2: Base64 Token认证
+    try {
+      const payload = JSON.parse(atob(token));
+
+      // 检查过期时间
+      if (payload.exp && payload.exp > Date.now()) {
+        return c.json({
+          success: true,
+          data: {
+            user: {
+              username: payload.username,
+              role: payload.role
+            }
+          },
+          message: '令牌验证成功'
+        });
+      } else {
+        return c.json({
+          success: false,
+          error: '令牌已过期'
+        }, 401);
+      }
+    } catch {
+      return c.json({
+        success: false,
+        error: '无效的令牌'
+      }, 401);
+    }
+  } catch (error) {
+    console.error('验证令牌失败:', error);
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
+    }, 500);
+  }
+});
+
 // 刷新令牌
 auth.post('/refresh', async (c) => {
   try {

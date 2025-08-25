@@ -101,6 +101,179 @@ app.route('/api/nodes', nodes);
 app.route('/api/subscriptions', subscriptions);
 app.route('/api/auth', auth);
 
+// 订阅内容路由
+app.get('/sub', async (c) => {
+  try {
+    // 返回支持的订阅格式
+    const formats = [
+      {
+        format: 'v2ray',
+        name: 'V2Ray/V2RayN',
+        description: 'Base64 encoded subscription for V2Ray clients',
+        extension: 'txt',
+        contentType: 'text/plain',
+        url: `${c.req.url.replace('/sub', '/sub/v2ray')}`
+      },
+      {
+        format: 'clash',
+        name: 'Clash',
+        description: 'YAML configuration for Clash clients',
+        extension: 'yaml',
+        contentType: 'text/yaml',
+        url: `${c.req.url.replace('/sub', '/sub/clash')}`
+      },
+      {
+        format: 'shadowrocket',
+        name: 'Shadowrocket',
+        description: 'Base64 encoded subscription for Shadowrocket',
+        extension: 'txt',
+        contentType: 'text/plain',
+        url: `${c.req.url.replace('/sub', '/sub/shadowrocket')}`
+      }
+    ];
+
+    return c.json({
+      success: true,
+      data: {
+        formats,
+        parameters: {
+          token: 'Subscription token (optional)',
+          filename: 'Custom filename',
+          types: 'Filter by node types (comma-separated)',
+          include: 'Include keywords (comma-separated)',
+          exclude: 'Exclude keywords (comma-separated)',
+          sort: 'Sort by: name, type, latency',
+          group: 'Enable grouping (true/false)',
+          rename: 'Rename rules (JSON encoded)'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('获取订阅格式失败:', error);
+    return c.json({
+      success: false,
+      error: '服务器内部错误'
+    }, 500);
+  }
+});
+
+// 订阅内容生成
+app.get('/sub/:format', async (c) => {
+  try {
+    const format = c.req.param('format');
+
+    // 获取所有节点
+    const nodeRepo = new NodeRepository(c.env.DB);
+    const nodesResult = await nodeRepo.findAll();
+
+    if (!nodesResult.success) {
+      return c.text('# 获取节点失败\n# 请检查服务器配置', 500);
+    }
+
+    const nodes = nodesResult.data || [];
+
+    if (nodes.length === 0) {
+      return c.text('# 暂无可用节点\n# 请先添加节点', 200);
+    }
+
+    // 根据格式生成订阅内容
+    let content = '';
+
+    switch (format.toLowerCase()) {
+      case 'v2ray':
+      case 'v2rayn':
+        // 生成V2Ray Base64格式
+        const v2rayNodes = nodes
+          .filter(node => ['vless', 'vmess'].includes(node.type))
+          .map(node => {
+            if (node.type === 'vless') {
+              return `vless://${node.uuid}@${node.server}:${node.port}?type=${node.network || 'tcp'}&security=${node.security || 'none'}#${encodeURIComponent(node.name)}`;
+            } else if (node.type === 'vmess') {
+              const vmessConfig = {
+                v: '2',
+                ps: node.name,
+                add: node.server,
+                port: node.port,
+                id: node.uuid,
+                aid: node.alterId || 0,
+                net: node.network || 'tcp',
+                type: 'none',
+                host: '',
+                path: node.wsPath || '',
+                tls: node.tls ? 'tls' : ''
+              };
+              return 'vmess://' + btoa(JSON.stringify(vmessConfig));
+            }
+            return '';
+          })
+          .filter(Boolean);
+
+        content = btoa(v2rayNodes.join('\n'));
+        break;
+
+      case 'clash':
+        // 生成Clash YAML格式
+        const clashNodes = nodes.map(node => {
+          if (node.type === 'vless') {
+            return {
+              name: node.name,
+              type: 'vless',
+              server: node.server,
+              port: node.port,
+              uuid: node.uuid,
+              network: node.network || 'tcp',
+              tls: node.tls || false
+            };
+          } else if (node.type === 'vmess') {
+            return {
+              name: node.name,
+              type: 'vmess',
+              server: node.server,
+              port: node.port,
+              uuid: node.uuid,
+              alterId: node.alterId || 0,
+              cipher: 'auto',
+              network: node.network || 'tcp',
+              tls: node.tls || false
+            };
+          }
+          return null;
+        }).filter(Boolean);
+
+        content = `# Clash配置文件
+# 生成时间: ${new Date().toISOString()}
+
+proxies:
+${clashNodes.map(node => `  - ${JSON.stringify(node)}`).join('\n')}
+
+proxy-groups:
+  - name: "🚀 节点选择"
+    type: select
+    proxies:
+${clashNodes.map(node => `      - "${node.name}"`).join('\n')}
+
+rules:
+  - MATCH,🚀 节点选择`;
+        break;
+
+      default:
+        return c.text('不支持的订阅格式', 400);
+    }
+
+    // 设置响应头
+    const headers: Record<string, string> = {
+      'Content-Type': format === 'clash' ? 'text/yaml; charset=utf-8' : 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Content-Disposition': `attachment; filename="subscription.${format === 'clash' ? 'yaml' : 'txt'}"`
+    };
+
+    return c.text(content, 200, headers);
+  } catch (error) {
+    console.error('生成订阅内容失败:', error);
+    return c.text('# 生成订阅失败\n# 请联系管理员', 500);
+  }
+});
+
 // 统计信息
 app.get('/api/stats', async (c) => {
   try {
